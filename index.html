@@ -632,22 +632,16 @@
 
         // --- INITIALIZATION ---
         window.onload = () => {
-            // Check local storage for existing cart/wishlist/products
+            // Check local storage for existing cart/wishlist
             const savedCart = localStorage.getItem('romeo_cart');
             const savedWishlist = localStorage.getItem('romeo_wishlist');
-            const savedProducts = localStorage.getItem('romeo_products');
             
             if (savedCart) cart = JSON.parse(savedCart);
             if (savedWishlist) wishlist = JSON.parse(savedWishlist);
             
-            if (savedProducts) {
-                products = JSON.parse(savedProducts);
-                updateBadges();
-                renderProducts(currentCategory);
-            } else {
-                // Sincronizar automáticamente con tu hoja de cálculo
-                loadFromGoogleSheets(DEFAULT_SHEETS_URL);
-            }
+            // Intento de sincronización automática desde la nube al cargar
+            const savedUrl = localStorage.getItem('romeo_sheets_url') || DEFAULT_SHEETS_URL;
+            loadFromGoogleSheets(savedUrl, false);
         };
 
         // --- UTILS & UI FEEDBACK ---
@@ -663,12 +657,10 @@
             
             container.appendChild(toast);
             
-            // Animate in
             setTimeout(() => {
                 toast.classList.remove('translate-y-4', 'opacity-0');
             }, 10);
             
-            // Remove after 3 seconds
             setTimeout(() => {
                 toast.classList.add('opacity-0');
                 setTimeout(() => toast.remove(), 300);
@@ -676,23 +668,32 @@
         }
 
         function formatMoney(amount) {
-            return '$' + parseFloat(amount).toFixed(2);
+            return '$' + parseFloat(amount || 0).toFixed(2);
         }
 
-        function loadFromGoogleSheets(customUrl = null) {
-            const urlInput = customUrl || document.getElementById('sheetsUrl').value.trim();
-            if (!urlInput || !urlInput.includes('google.com/spreadsheets')) {
-                showToast('Ingresa una URL válida de Google Sheets (formato CSV)', 'error');
+        function loadFromGoogleSheets(customUrl = null, notifyUser = true) {
+            let baseUrl = customUrl || document.getElementById('sheetsUrl').value.trim();
+            
+            if (!baseUrl || !baseUrl.includes('google.com/spreadsheets')) {
+                if (notifyUser) showToast('Ingresa una URL válida de Google Sheets (formato CSV)', 'error');
+                if (products.length === 0) fallbackToDefault();
                 return;
             }
 
-            showToast('Sincronizando catálogo con Google Sheets...', 'info');
+            if (notifyUser) showToast('Sincronizando catálogo con Google Sheets...', 'info');
+            
             const modal = document.getElementById('sheetsModal');
             if (modal && !modal.classList.contains('hidden')) {
                 closeModal('sheetsModal');
             }
 
-            Papa.parse(urlInput, {
+            // Guardar la URL activa para futuras recargas
+            localStorage.setItem('romeo_sheets_url', baseUrl);
+
+            // Agregar parámetro anti-caché para forzar descarga fresca en cada actualización
+            const antiCacheUrl = baseUrl + (baseUrl.includes('?') ? '&' : '?') + '_t=' + new Date().getTime();
+
+            Papa.parse(antiCacheUrl, {
                 download: true,
                 header: true,
                 dynamicTyping: true,
@@ -700,47 +701,72 @@
                 complete: function(results) {
                     if (results.data && results.data.length > 0) {
                         try {
-                            // Map and validate columns
-                            const newProducts = results.data.map(row => ({
-                                id: String(row.id || Math.random().toString(36).substr(2, 9)),
-                                name: row.nombre || 'Producto sin nombre',
-                                category: String(row.categoria || 'otros').toLowerCase(),
-                                price: parseFloat(row.precio || 0),
-                                originalPrice: row.precioOriginal ? parseFloat(row.precioOriginal) : null,
-                                image: row.imagen || 'https://via.placeholder.com/400x500?text=Sin+Imagen',
-                                description: row.descripcion || '',
-                                offer: !!row.precioOriginal || String(row.oferta || '').toLowerCase() === 'true'
-                            })).filter(p => p.name && p.price >= 0);
-                            
+                            const newProducts = results.data.map((row, idx) => {
+                                // Normalizar llaves para tolerar mayúsculas o minúsculas en encabezados de Google Sheets
+                                const keys = {};
+                                Object.keys(row).forEach(k => {
+                                    keys[k.trim().toLowerCase()] = row[k];
+                                });
+
+                                const name = keys['nombre'] || keys['name'] || keys['titulo'];
+                                const price = parseFloat(keys['precio'] || keys['price'] || 0);
+
+                                if (!name) return null;
+
+                                return {
+                                    id: String(keys['id'] || (idx + 1)),
+                                    name: String(name).trim(),
+                                    category: String(keys['categoria'] || keys['category'] || 'otros').toLowerCase().trim(),
+                                    price: price,
+                                    originalPrice: (keys['preciooriginal'] || keys['originalprice']) ? parseFloat(keys['preciooriginal'] || keys['originalprice']) : null,
+                                    image: keys['imagen'] || keys['image'] || 'https://via.placeholder.com/400x500?text=Sin+Imagen',
+                                    description: String(keys['descripcion'] || keys['description'] || ''),
+                                    offer: !!(keys['preciooriginal'] || keys['originalprice']) || String(keys['oferta'] || keys['offer'] || '').toLowerCase() === 'true'
+                                };
+                            }).filter(p => p !== null && p.name !== '');
+
                             if (newProducts.length > 0) {
                                 products = newProducts;
                                 localStorage.setItem('romeo_products', JSON.stringify(products));
                                 renderProducts(currentCategory);
                                 updateBadges();
-                                showToast('Catálogo sincronizado exitosamente desde la nube', 'success');
+                                if (notifyUser) showToast('Catálogo actualizado exitosamente', 'success');
                             } else {
-                                throw new Error("No valid products found");
+                                throw new Error("No hay productos válidos en el archivo CSV.");
                             }
                         } catch (e) {
-                            console.error(e);
-                            showToast('Error en el formato del CSV. Mostrando productos por defecto.', 'error');
-                            if (products.length === 0) resetDefaultProducts();
+                            console.error('Error parseando columnas:', e);
+                            if (notifyUser) showToast('Error al leer datos de la hoja. Mostrando productos por defecto.', 'error');
+                            fallbackToDefault();
                         }
                     } else {
-                        showToast('El documento CSV está vacío', 'error');
+                        if (notifyUser) showToast('El archivo en la nube está vacío o despublicado.', 'error');
+                        fallbackToDefault();
                     }
                 },
                 error: function(err) {
                     console.error("PapaParse error:", err);
-                    showToast('Error al conectar con Google Sheets.', 'error');
-                    if (products.length === 0) resetDefaultProducts();
+                    if (notifyUser) showToast('Error de conexión con Google Sheets.', 'error');
+                    fallbackToDefault();
                 }
             });
+        }
+
+        function fallbackToDefault() {
+            const savedProducts = localStorage.getItem('romeo_products');
+            if (savedProducts) {
+                products = JSON.parse(savedProducts);
+            } else {
+                products = [...defaultProducts];
+            }
+            renderProducts(currentCategory);
+            updateBadges();
         }
 
         function resetDefaultProducts() {
             products = [...defaultProducts];
             localStorage.removeItem('romeo_products');
+            localStorage.removeItem('romeo_sheets_url');
             renderProducts(currentCategory);
             closeModal('sheetsModal');
             showToast('Catálogo de demostración restaurado', 'success');
