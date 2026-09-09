@@ -499,14 +499,14 @@
                 <p>Ingresa la URL pública en formato <strong>CSV</strong> de tu documento de Google Sheets para cargar tus productos dinámicamente.</p>
                 <div>
                     <label class="block text-xs font-bold text-gray-700 mb-1">URL del CSV Público</label>
-                    <input type="text" id="sheetsUrl" placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=csv" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-xs shadow-inner">
+                    <input type="text" id="sheetsUrl" value="https://docs.google.com/spreadsheets/d/e/2PACX-1vTJSg46iKvaebTHmKPzyjkpFv1XXNy7s1YhZIqzQKPBa7BIml67bhglLIGHepFKXhb6fgAoTugAWD2q/pub?gid=0&single=true&output=csv" placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=csv" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-xs shadow-inner">
                 </div>
                 <div class="bg-emerald-50 p-3 rounded-lg border border-emerald-100 text-[11px] text-emerald-800">
                     <strong class="block mb-1">¿Cómo obtener el enlace?</strong>
                     En Google Sheets ve a: Archivo > Compartir > Publicar en la web. Selecciona "Toda la hoja" y "Valores separados por comas (.csv)". Copia el enlace aquí.
                     <br><br>
                     <strong class="block mb-1">Columnas requeridas:</strong>
-                    id, name, category (caballero/dama/calzado/accesorios), price, image (URL), description, offer (true/false)
+                    id, nombre, categoria, precio, precioOriginal (opcional), imagen, descripcion
                 </div>
                 <div class="flex gap-2 pt-2">
                     <button onclick="loadFromGoogleSheets()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg transition-colors shadow-md">Sincronizar Datos</button>
@@ -610,6 +610,7 @@
 
     <script>
         // --- STATE MANAGEMENT ---
+        const DEFAULT_SHEETS_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTJSg46iKvaebTHmKPzyjkpFv1XXNy7s1YhZIqzQKPBa7BIml67bhglLIGHepFKXhb6fgAoTugAWD2q/pub?gid=0&single=true&output=csv";
         let products = [];
         let cart = [];
         let wishlist = [];
@@ -618,13 +619,13 @@
         // --- DEFAULT DEMO DATA ---
         const defaultProducts = [
             { id: '1', name: 'Camisa Polo Premium Azul', category: 'caballero', price: 24.99, image: 'https://images.unsplash.com/photo-1581655353564-df123a1eb820?auto=format&fit=crop&w=400&q=80', description: 'Polo de algodón 100% de alta transpirabilidad. Ideal para el clima salvadoreño.', offer: false },
-            { id: '2', name: 'Chaqueta Denim Clásica', category: 'caballero', price: 45.00, image: 'https://images.unsplash.com/photo-1495105787522-5334e3ffa0ef?auto=format&fit=crop&w=400&q=80', description: 'Chaqueta de lona resistente, diseño atemporal para cualquier ocasión.', offer: true },
+            { id: '2', name: 'Chaqueta Denim Clásica', category: 'caballero', price: 31.50, originalPrice: 45.00, image: 'https://images.unsplash.com/photo-1495105787522-5334e3ffa0ef?auto=format&fit=crop&w=400&q=80', description: 'Chaqueta de lona resistente, diseño atemporal para cualquier ocasión.', offer: true },
             { id: '3', name: 'Blusa Estampado Floral', category: 'dama', price: 18.50, image: 'https://images.unsplash.com/photo-1572804013309-84a8f9f69bf9?auto=format&fit=crop&w=400&q=80', description: 'Blusa fresca con estampado de temporada. Tela suave y cómoda.', offer: false },
             { id: '4', name: 'Vestido Largo de Noche', category: 'dama', price: 55.00, image: 'https://images.unsplash.com/photo-1539008835657-9e8e9680c956?auto=format&fit=crop&w=400&q=80', description: 'Elegancia total. Vestido largo con abertura lateral y espalda descubierta.', offer: false },
             { id: '5', name: 'Sneakers Urbanos Blancos', category: 'calzado', price: 35.99, image: 'https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?auto=format&fit=crop&w=400&q=80', description: 'Comodidad para tu día a día. Plantilla memory foam y diseño minimalista.', offer: false },
-            { id: '6', name: 'Zapatos de Vestir Oxford', category: 'calzado', price: 60.00, image: 'https://images.unsplash.com/photo-1614252339460-e1762c66861d?auto=format&fit=crop&w=400&q=80', description: 'Cuero genuino, acabados a mano. El toque final para tu traje.', offer: true },
+            { id: '6', name: 'Zapatos de Vestir Oxford', category: 'calzado', price: 42.00, originalPrice: 60.00, image: 'https://images.unsplash.com/photo-1614252339460-e1762c66861d?auto=format&fit=crop&w=400&q=80', description: 'Cuero genuino, acabados a mano. El toque final para tu traje.', offer: true },
             { id: '7', name: 'Gorra Snapback Logo', category: 'accesorios', price: 12.00, image: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?auto=format&fit=crop&w=400&q=80', description: 'Gorra ajustable estilo urbano con logo bordado en relieve.', offer: false },
-            { id: '8', name: 'Reloj Analógico Minimalista', category: 'accesorios', price: 28.50, image: 'https://images.unsplash.com/photo-1524592094714-a5764260ae51?auto=format&fit=crop&w=400&q=80', description: 'Correa de cuero sintético, maquinaria resistente al agua 3ATM.', offer: true },
+            { id: '8', name: 'Reloj Analógico Minimalista', category: 'accesorios', price: 19.95, originalPrice: 28.50, image: 'https://images.unsplash.com/photo-1524592094714-a5764260ae51?auto=format&fit=crop&w=400&q=80', description: 'Correa de cuero sintético, maquinaria resistente al agua 3ATM.', offer: true },
             { id: '9', name: 'Jeans Skinny Fit Negro', category: 'caballero', price: 29.99, image: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=400&q=80', description: 'Pantalón ajustado con stretch para mayor comodidad de movimiento.', offer: false },
             { id: '10', name: 'Cartera de Mano Cuero', category: 'accesorios', price: 22.00, image: 'https://images.unsplash.com/photo-1584916201218-f4242ceb4809?auto=format&fit=crop&w=400&q=80', description: 'Múltiples compartimentos para tarjetas y billetes. Diseño elegante.', offer: false }
         ];
@@ -641,12 +642,12 @@
             
             if (savedProducts) {
                 products = JSON.parse(savedProducts);
+                updateBadges();
+                renderProducts(currentCategory);
             } else {
-                products = [...defaultProducts];
+                // Sincronizar automáticamente con tu hoja de cálculo
+                loadFromGoogleSheets(DEFAULT_SHEETS_URL);
             }
-
-            updateBadges();
-            renderProducts(currentCategory);
         };
 
         // --- UTILS & UI FEEDBACK ---
@@ -678,16 +679,18 @@
             return '$' + parseFloat(amount).toFixed(2);
         }
 
-        // --- STREAMING_CHUNK: Implementing Google Sheets CSV Parsing... ---
-        function loadFromGoogleSheets() {
-            const urlInput = document.getElementById('sheetsUrl').value.trim();
+        function loadFromGoogleSheets(customUrl = null) {
+            const urlInput = customUrl || document.getElementById('sheetsUrl').value.trim();
             if (!urlInput || !urlInput.includes('google.com/spreadsheets')) {
                 showToast('Ingresa una URL válida de Google Sheets (formato CSV)', 'error');
                 return;
             }
 
-            showToast('Sincronizando catálogo...', 'info');
-            closeModal('sheetsModal');
+            showToast('Sincronizando catálogo con Google Sheets...', 'info');
+            const modal = document.getElementById('sheetsModal');
+            if (modal && !modal.classList.contains('hidden')) {
+                closeModal('sheetsModal');
+            }
 
             Papa.parse(urlInput, {
                 download: true,
@@ -700,22 +703,28 @@
                             // Map and validate columns
                             const newProducts = results.data.map(row => ({
                                 id: String(row.id || Math.random().toString(36).substr(2, 9)),
-                                name: row.name || 'Producto sin nombre',
-                                category: (row.category || 'otros').toLowerCase(),
-                                price: parseFloat(row.price || 0),
-                                image: row.image || 'https://via.placeholder.com/400x500?text=Sin+Imagen',
-                                description: row.description || '',
-                                offer: String(row.offer).toLowerCase() === 'true' || row.offer === true
-                            }));
+                                name: row.nombre || 'Producto sin nombre',
+                                category: String(row.categoria || 'otros').toLowerCase(),
+                                price: parseFloat(row.precio || 0),
+                                originalPrice: row.precioOriginal ? parseFloat(row.precioOriginal) : null,
+                                image: row.imagen || 'https://via.placeholder.com/400x500?text=Sin+Imagen',
+                                description: row.descripcion || '',
+                                offer: !!row.precioOriginal || String(row.oferta || '').toLowerCase() === 'true'
+                            })).filter(p => p.name && p.price >= 0);
                             
-                            products = newProducts;
-                            localStorage.setItem('romeo_products', JSON.stringify(products));
-                            renderProducts(currentCategory);
-                            showToast('Catálogo actualizado exitosamente', 'success');
-                            document.getElementById('sheetsUrl').value = '';
+                            if (newProducts.length > 0) {
+                                products = newProducts;
+                                localStorage.setItem('romeo_products', JSON.stringify(products));
+                                renderProducts(currentCategory);
+                                updateBadges();
+                                showToast('Catálogo sincronizado exitosamente desde la nube', 'success');
+                            } else {
+                                throw new Error("No valid products found");
+                            }
                         } catch (e) {
                             console.error(e);
-                            showToast('Error en el formato del CSV. Revisa las columnas.', 'error');
+                            showToast('Error en el formato del CSV. Mostrando productos por defecto.', 'error');
+                            if (products.length === 0) resetDefaultProducts();
                         }
                     } else {
                         showToast('El documento CSV está vacío', 'error');
@@ -723,7 +732,8 @@
                 },
                 error: function(err) {
                     console.error("PapaParse error:", err);
-                    showToast('Error al conectar con Google Sheets. Verifica que el enlace sea público (Publicar en la web > CSV).', 'error');
+                    showToast('Error al conectar con Google Sheets.', 'error');
+                    if (products.length === 0) resetDefaultProducts();
                 }
             });
         }
@@ -800,11 +810,11 @@
                     const isWished = wishlist.some(w => w.id === p.id);
                     const heartClass = isWished ? 'fa-solid text-red-500' : 'fa-regular text-gray-400';
                     
-                    const priceHtml = p.offer 
-                        ? `<span class="font-bold text-red-600">${formatMoney(p.price * 0.7)}</span> <span class="text-xs text-gray-400 line-through">${formatMoney(p.price)}</span>` 
+                    const priceHtml = p.offer && p.originalPrice 
+                        ? `<span class="font-bold text-red-600">${formatMoney(p.price)}</span> <span class="text-xs text-gray-400 line-through">${formatMoney(p.originalPrice)}</span>` 
                         : `<span class="font-bold text-gray-900">${formatMoney(p.price)}</span>`;
 
-                    const offerBadge = p.offer ? `<span class="absolute top-2 left-2 bg-red-600 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded shadow-sm">30% OFF</span>` : '';
+                    const offerBadge = p.offer ? `<span class="absolute top-2 left-2 bg-red-600 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded shadow-sm">OFERTA</span>` : '';
 
                     const card = `
                         <div class="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 group flex flex-col h-full">
@@ -904,7 +914,7 @@
             document.getElementById('modalDesc').innerText = product.description;
             
             const isOffer = product.offer;
-            const finalPrice = isOffer ? product.price * 0.7 : product.price;
+            const finalPrice = product.price;
             
             document.getElementById('modalPrice').innerText = formatMoney(finalPrice);
             
@@ -913,8 +923,8 @@
             const oldPriceEl = document.getElementById('modalOldPrice');
             const badgeEl = document.getElementById('modalOfferBadge');
 
-            if(isOffer) {
-                oldPriceEl.innerText = formatMoney(product.price);
+            if(isOffer && product.originalPrice) {
+                oldPriceEl.innerText = formatMoney(product.originalPrice);
                 oldPriceEl.classList.remove('hidden');
                 priceEl.classList.add('text-red-600');
                 badgeEl.classList.remove('hidden');
@@ -1019,7 +1029,7 @@
             }
 
             wishlist.forEach(item => {
-                const price = item.offer ? item.price * 0.7 : item.price;
+                const price = item.price;
                 const html = `
                     <div class="flex gap-4 items-center border border-gray-100 rounded-xl p-3 shadow-sm relative pr-10">
                         <img src="${item.image}" alt="${item.name}" class="w-16 h-16 object-cover rounded-lg border border-gray-100">
@@ -1062,7 +1072,7 @@
                 size = (product.category === 'calzado') ? '40' : (product.category === 'accesorios' ? 'Única' : 'M');
             }
 
-            const finalPrice = product.offer ? product.price * 0.7 : product.price;
+            const finalPrice = product.price;
 
             const existing = cart.find(c => c.id === id && c.size === size);
             if (existing) {
