@@ -14,6 +14,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- PapaParse para leer catálogo desde Google Sheets (CSV) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
     <script>
         tailwind.config = {
             theme: {
@@ -51,9 +52,18 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
+        
+        /* Modal Animation */
+        .modal-enter { opacity: 0; transform: scale(0.95); }
+        .modal-enter-active { opacity: 1; transform: scale(1); transition: opacity 300ms, transform 300ms; }
+        .modal-exit { opacity: 1; transform: scale(1); }
+        .modal-exit-active { opacity: 0; transform: scale(0.95); transition: opacity 300ms, transform 300ms; }
+        
+        /* Stop body scroll when drawer/modal is open */
+        body.no-scroll { overflow: hidden; }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 antialiased selection:bg-blue-600 selection:text-white">
+<body class="bg-gray-50 text-gray-800 antialiased selection:bg-blue-600 selection:text-white pb-20 sm:pb-0">
 
     <!-- Announcement Top Bar -->
     <div class="bg-gradient-to-r from-blue-900 via-brand-blue to-blue-800 text-white text-xs py-2 px-4 text-center font-medium tracking-wide flex items-center justify-center gap-2">
@@ -68,9 +78,9 @@
                 
                 <!-- Search Bar (Left - exact like screenshot) -->
                 <div class="w-1/3 max-w-xs relative hidden md:block">
-                    <form onsubmit="handleSearch(event)" class="relative">
+                    <form onsubmit="handleSearch(event)" action="javascript:void(0);" class="relative">
                         <input type="text" id="searchInput" placeholder="Buscar productos, marcas y más..." 
-                            class="w-full pl-4 pr-10 py-2 text-sm bg-gray-100 border border-transparent rounded-full focus:bg-white focus:border-brand-blue focus:outline-none transition-all duration-200">
+                            class="w-full pl-4 pr-10 py-2 text-sm bg-gray-100 border border-transparent rounded-full focus:bg-white focus:border-brand-blue focus:outline-none transition-all duration-200 shadow-inner">
                         <button type="submit" class="absolute right-1 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center bg-black text-white rounded-full hover:bg-brand-blue transition-colors">
                             <i class="fa-solid fa-magnifying-glass text-xs"></i>
                         </button>
@@ -102,9 +112,9 @@
                     </button>
 
                     <!-- Google Sheets Manager Button -->
-                    <button onclick="openSheetsModal()" class="hidden lg:flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200 hover:bg-emerald-100 transition-colors" title="Gestionar Hoja de Cálculo">
+                    <button onclick="openModal('sheetsModal')" class="hidden lg:flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200 hover:bg-emerald-100 transition-colors" title="Gestionar Hoja de Cálculo">
                         <i class="fa-solid fa-file-excel text-emerald-600"></i>
-                        <span>Hoja de Cálculo</span>
+                        <span>Catálogo en la Nube</span>
                     </button>
 
                     <!-- Country Selector (El Salvador) -->
@@ -114,18 +124,18 @@
                     </div>
 
                     <!-- User Account Icon -->
-                    <button onclick="openUserModal()" class="p-2 text-gray-700 hover:text-brand-blue transition-colors rounded-full hover:bg-gray-100" title="Mi Cuenta">
+                    <button onclick="openModal('userModal')" class="p-2 text-gray-700 hover:text-brand-blue transition-colors rounded-full hover:bg-gray-100" title="Mi Cuenta">
                         <i class="fa-regular fa-user text-xl"></i>
                     </button>
 
-                    <!-- Wishlist (Ahora visible también en móviles) -->
-                    <button onclick="openWishlist()" class="p-2 text-gray-700 hover:text-red-500 transition-colors rounded-full hover:bg-gray-100 relative" title="Favoritos">
+                    <!-- Wishlist -->
+                    <button onclick="openModal('wishlistModal')" class="p-2 text-gray-700 hover:text-red-500 transition-colors rounded-full hover:bg-gray-100 relative" title="Favoritos">
                         <i class="fa-regular fa-heart text-xl"></i>
                         <span id="wishlistCount" class="absolute top-1 right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold hidden">0</span>
                     </button>
 
-                    <!-- Cart Icon with Badge -->
-                    <button onclick="toggleCartDrawer()" class="p-2 text-gray-900 hover:text-brand-blue transition-colors rounded-full hover:bg-gray-100 relative" title="Carrito">
+                    <!-- Cart Icon with Badge (Opens Cart Modal like Wishlist) -->
+                    <button onclick="openCartModal()" class="p-2 text-gray-900 hover:text-brand-blue transition-colors rounded-full hover:bg-gray-100 relative" title="Carrito">
                         <i class="fa-solid fa-bag-shopping text-xl"></i>
                         <span id="cartBadge" class="absolute -top-1 -right-1 bg-black text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">0</span>
                     </button>
@@ -140,24 +150,23 @@
                     <li><a href="#catalogo" onclick="filterCategory('dama')" class="hover:text-brand-blue transition-colors py-1 border-b-2 border-transparent hover:border-brand-blue">Dama</a></li>
                     <li><a href="#catalogo" onclick="filterCategory('calzado')" class="hover:text-brand-blue transition-colors py-1 border-b-2 border-transparent hover:border-brand-blue">Calzado</a></li>
                     <li><a href="#catalogo" onclick="filterCategory('accesorios')" class="hover:text-brand-blue transition-colors py-1 border-b-2 border-transparent hover:border-brand-blue">Accesorios</a></li>
-                    <li><a href="#catalogo" onclick="filterCategory('blancos')" class="hover:text-brand-blue transition-colors py-1 border-b-2 border-transparent hover:border-brand-blue">Blancos</a></li>
                     <li><a href="#catalogo" onclick="filterCategory('ofertas')" class="text-red-600 hover:text-red-700 transition-colors py-1 border-b-2 border-transparent hover:border-red-600 flex items-center gap-1"><i class="fa-solid fa-fire"></i> Ofertas</a></li>
                 </ul>
             </nav>
         </div>
 
         <!-- Mobile Search Dropdown -->
-        <div id="mobileSearch" class="hidden md:hidden px-4 py-3 bg-gray-100 border-t border-gray-200">
-            <form onsubmit="handleSearch(event)" class="relative">
-                <input type="text" id="mobileSearchInput" placeholder="Buscar prendas, marcas..." class="w-full pl-4 pr-10 py-2.5 text-sm bg-white border border-gray-300 rounded-lg">
-                <button type="submit" class="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-gray-500">
+        <div id="mobileSearch" class="hidden md:hidden px-4 py-3 bg-gray-100 border-t border-gray-200 shadow-inner">
+            <form onsubmit="handleSearch(event)" action="javascript:void(0);" class="relative">
+                <input type="text" id="mobileSearchInput" placeholder="Buscar prendas, marcas..." class="w-full pl-4 pr-10 py-2.5 text-sm bg-white border border-gray-300 rounded-lg shadow-sm focus:border-brand-blue focus:ring-1 focus:ring-brand-blue outline-none transition-all">
+                <button type="submit" class="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-gray-500 hover:text-brand-blue">
                     <i class="fa-solid fa-magnifying-glass"></i>
                 </button>
             </form>
         </div>
     </header>
 
-    <!-- Hero Banner (Exact match to Pierre Cardin style, customized for Variedades Romeo) -->
+    <!-- Hero Banner -->
     <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
         <div class="relative rounded-2xl overflow-hidden hero-gradient text-white shadow-xl min-h-[360px] md:min-h-[420px] flex items-center border border-blue-900/40">
             <!-- Background Decorative Elements -->
@@ -183,7 +192,7 @@
                     </div>
                 </div>
 
-                <!-- Center Banner Big Discount (30% OFF - matching screenshot layout) -->
+                <!-- Center Banner Big Discount -->
                 <div class="md:col-span-4 text-center my-2 md:my-0 border-y md:border-y-0 md:border-x border-white/20 py-6 md:py-0">
                     <div class="text-6xl sm:text-8xl font-black tracking-tighter text-white font-heading leading-none flex items-center justify-center">
                         30<span class="text-4xl sm:text-6xl text-yellow-300 font-extrabold">%</span>
@@ -205,7 +214,7 @@
         </div>
     </section>
 
-    <!-- Service Benefits Bar (Envíos gratis, Retira en tienda, Rastrear pedido, Asesor de compra) -->
+    <!-- Service Benefits Bar -->
     <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 my-8">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 py-4 px-2 bg-white rounded-2xl shadow-sm border border-gray-100">
             
@@ -219,7 +228,7 @@
                 </div>
             </div>
 
-            <button onclick="openPickupModal()" class="flex items-center justify-center gap-3 p-3 text-center md:text-left hover:bg-gray-50 rounded-xl transition-colors">
+            <button onclick="openModal('pickupModal')" class="flex items-center justify-center gap-3 p-3 text-center md:text-left hover:bg-gray-50 rounded-xl transition-colors">
                 <div class="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center text-lg flex-shrink-0">
                     <i class="fa-solid fa-store"></i>
                 </div>
@@ -229,7 +238,7 @@
                 </div>
             </button>
 
-            <button onclick="openTrackOrderModal()" class="flex items-center justify-center gap-3 p-3 text-center md:text-left hover:bg-gray-50 rounded-xl transition-colors">
+            <button onclick="openModal('trackOrderModal')" class="flex items-center justify-center gap-3 p-3 text-center md:text-left hover:bg-gray-50 rounded-xl transition-colors">
                 <div class="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center text-lg flex-shrink-0">
                     <i class="fa-solid fa-box"></i>
                 </div>
@@ -252,7 +261,7 @@
         </div>
     </section>
 
-    <!-- Categories Grid ("Nuestras categorías" - exact matching layout) -->
+    <!-- Categories Grid -->
     <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div class="flex items-center justify-between mb-6">
             <h2 class="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight font-heading">
@@ -263,70 +272,75 @@
 
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
             
-            <!-- Category 1: Caballero -->
-            <div onclick="filterCategory('caballero')" class="group relative rounded-2xl overflow-hidden cursor-pointer shadow-md bg-gray-200 aspect-[3/4] hover:shadow-xl transition-all duration-300">
+            <a href="#catalogo" onclick="filterCategory('caballero')" class="group relative rounded-2xl overflow-hidden cursor-pointer shadow-md bg-gray-200 aspect-[3/4] hover:shadow-xl transition-all duration-300 block">
                 <img src="https://images.unsplash.com/photo-1617137984095-74e4e5e3613f?auto=format&fit=crop&w=600&q=80" alt="Caballero" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                 <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-5">
                     <span class="text-xs text-yellow-300 font-bold uppercase tracking-wider mb-1">Nueva Colección</span>
                     <h3 class="text-xl sm:text-2xl font-black text-white font-heading uppercase">Caballero</h3>
-                    <p class="text-xs text-gray-200 mt-1">Polos, camisas, pantalones y más</p>
+                    <p class="text-xs text-gray-200 mt-1">Polos, camisas y más</p>
                 </div>
-            </div>
+            </a>
 
-            <!-- Category 2: Dama -->
-            <div onclick="filterCategory('dama')" class="group relative rounded-2xl overflow-hidden cursor-pointer shadow-md bg-gray-200 aspect-[3/4] hover:shadow-xl transition-all duration-300">
+            <a href="#catalogo" onclick="filterCategory('dama')" class="group relative rounded-2xl overflow-hidden cursor-pointer shadow-md bg-gray-200 aspect-[3/4] hover:shadow-xl transition-all duration-300 block">
                 <img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&q=80" alt="Dama" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                 <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-5">
                     <span class="text-xs text-yellow-300 font-bold uppercase tracking-wider mb-1">Tendencia</span>
                     <h3 class="text-xl sm:text-2xl font-black text-white font-heading uppercase">Dama</h3>
-                    <p class="text-xs text-gray-200 mt-1">Blusas, vestidos y moda urbana</p>
+                    <p class="text-xs text-gray-200 mt-1">Blusas y vestidos</p>
                 </div>
-            </div>
+            </a>
 
-            <!-- Category 3: Calzado -->
-            <div onclick="filterCategory('calzado')" class="group relative rounded-2xl overflow-hidden cursor-pointer shadow-md bg-gray-200 aspect-[3/4] hover:shadow-xl transition-all duration-300">
+            <a href="#catalogo" onclick="filterCategory('calzado')" class="group relative rounded-2xl overflow-hidden cursor-pointer shadow-md bg-gray-200 aspect-[3/4] hover:shadow-xl transition-all duration-300 block">
                 <img src="https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=600&q=80" alt="Calzado" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                 <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-5">
-                    <span class="text-xs text-yellow-300 font-bold uppercase tracking-wider mb-1">Estilo & Confort</span>
+                    <span class="text-xs text-yellow-300 font-bold uppercase tracking-wider mb-1">Confort</span>
                     <h3 class="text-xl sm:text-2xl font-black text-white font-heading uppercase">Calzado</h3>
-                    <p class="text-xs text-gray-200 mt-1">Sneakers, vestir y casual</p>
+                    <p class="text-xs text-gray-200 mt-1">Sneakers y vestir</p>
                 </div>
-            </div>
+            </a>
 
-            <!-- Category 4: Accesorios -->
-            <div onclick="filterCategory('accesorios')" class="group relative rounded-2xl overflow-hidden cursor-pointer shadow-md bg-gray-200 aspect-[3/4] hover:shadow-xl transition-all duration-300">
+            <a href="#catalogo" onclick="filterCategory('accesorios')" class="group relative rounded-2xl overflow-hidden cursor-pointer shadow-md bg-gray-200 aspect-[3/4] hover:shadow-xl transition-all duration-300 block">
                 <img src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=600&q=80" alt="Accesorios" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
                 <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-5">
                     <span class="text-xs text-yellow-300 font-bold uppercase tracking-wider mb-1">Complementos</span>
                     <h3 class="text-xl sm:text-2xl font-black text-white font-heading uppercase">Accesorios</h3>
-                    <p class="text-xs text-gray-200 mt-1">Gorras, fajas y relojes</p>
+                    <p class="text-xs text-gray-200 mt-1">Gorras, fajas, relojes</p>
                 </div>
-            </div>
+            </a>
 
         </div>
     </section>
 
     <!-- Catalog Section -->
-    <section id="catalogo" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <section id="catalogo" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 scroll-mt-20">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>
                 <span class="text-xs font-bold uppercase text-brand-blue tracking-widest">Catálogo Exclusivo</span>
-                <h2 class="text-2xl sm:text-4xl font-black text-gray-900 font-heading">Productos Destacados</h2>
+                <h2 id="catalogTitle" class="text-2xl sm:text-4xl font-black text-gray-900 font-heading">Todos los Productos</h2>
             </div>
 
             <!-- Filter Buttons -->
-            <div class="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1">
-                <button onclick="filterCategory('todos')" class="cat-btn active px-4 py-2 rounded-full text-xs font-bold uppercase transition-all bg-brand-blue text-white shadow-md">Todos</button>
-                <button onclick="filterCategory('caballero')" class="cat-btn px-4 py-2 rounded-full text-xs font-bold uppercase transition-all bg-gray-100 text-gray-700 hover:bg-gray-200">Caballero</button>
-                <button onclick="filterCategory('dama')" class="cat-btn px-4 py-2 rounded-full text-xs font-bold uppercase transition-all bg-gray-100 text-gray-700 hover:bg-gray-200">Dama</button>
-                <button onclick="filterCategory('calzado')" class="cat-btn px-4 py-2 rounded-full text-xs font-bold uppercase transition-all bg-gray-100 text-gray-700 hover:bg-gray-200">Calzado</button>
-                <button onclick="filterCategory('accesorios')" class="cat-btn px-4 py-2 rounded-full text-xs font-bold uppercase transition-all bg-gray-100 text-gray-700 hover:bg-gray-200">Accesorios</button>
+            <div class="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1 pb-2">
+                <button onclick="filterCategory('todos')" id="btn-todos" class="cat-btn active px-4 py-2 rounded-full text-xs font-bold uppercase transition-all bg-brand-blue text-white shadow-md whitespace-nowrap">Todos</button>
+                <button onclick="filterCategory('caballero')" id="btn-caballero" class="cat-btn px-4 py-2 rounded-full text-xs font-bold uppercase transition-all bg-gray-100 text-gray-700 hover:bg-gray-200 whitespace-nowrap">Caballero</button>
+                <button onclick="filterCategory('dama')" id="btn-dama" class="cat-btn px-4 py-2 rounded-full text-xs font-bold uppercase transition-all bg-gray-100 text-gray-700 hover:bg-gray-200 whitespace-nowrap">Dama</button>
+                <button onclick="filterCategory('calzado')" id="btn-calzado" class="cat-btn px-4 py-2 rounded-full text-xs font-bold uppercase transition-all bg-gray-100 text-gray-700 hover:bg-gray-200 whitespace-nowrap">Calzado</button>
+                <button onclick="filterCategory('accesorios')" id="btn-accesorios" class="cat-btn px-4 py-2 rounded-full text-xs font-bold uppercase transition-all bg-gray-100 text-gray-700 hover:bg-gray-200 whitespace-nowrap">Accesorios</button>
+                <button onclick="filterCategory('ofertas')" id="btn-ofertas" class="cat-btn px-4 py-2 rounded-full text-xs font-bold uppercase transition-all bg-gray-100 text-red-600 hover:bg-red-50 border border-red-200 whitespace-nowrap"><i class="fa-solid fa-fire mr-1"></i> Ofertas</button>
             </div>
         </div>
 
         <!-- Products Grid Container -->
         <div id="productGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
             <!-- Dynamically populated via Javascript -->
+        </div>
+        
+        <!-- Empty State -->
+        <div id="emptyState" class="hidden flex flex-col items-center justify-center py-16 text-gray-400">
+            <i class="fa-solid fa-box-open text-6xl mb-4"></i>
+            <h3 class="text-xl font-bold text-gray-700">No se encontraron productos</h3>
+            <p class="text-sm">Intenta con otra categoría o búsqueda.</p>
+            <button onclick="filterCategory('todos')" class="mt-4 bg-brand-blue text-white px-6 py-2 rounded-full font-bold hover:bg-blue-700">Ver Todo</button>
         </div>
     </section>
 
@@ -349,14 +363,14 @@
             </div>
 
             <!-- Custom Illustrated Badge / Mascot Visual Card -->
-            <div class="z-10 bg-white/5 backdrop-blur-md border border-white/10 p-6 rounded-2xl flex flex-col items-center text-center max-w-xs w-full">
-                <div class="w-24 h-24 rounded-full border-4 border-yellow-400 overflow-hidden shadow-xl mb-3">
+            <div class="z-10 bg-white/5 backdrop-blur-md border border-white/10 p-6 rounded-2xl flex flex-col items-center text-center max-w-xs w-full shadow-2xl">
+                <div class="w-24 h-24 rounded-full border-4 border-yellow-400 overflow-hidden shadow-[0_0_15px_rgba(250,204,21,0.5)] mb-3 bg-white">
                     <img src="https://media.discordapp.net/attachments/1197064622985982012/1547069254095077436/136348d2-82a7-4846-8abe-906397448de1.png?ex=6aa21405&is=6aa0c285&hm=b54a18fa7ea1e7075771eeb243c876f800fe6e0fc25d72860c24ffebc09d8bbb&=&format=webp&quality=lossless" alt="Variedades Romeo" class="w-full h-full object-cover">
                 </div>
-                <h4 class="font-extrabold text-lg text-white">VARIEDADES ROMEO</h4>
+                <h4 class="font-extrabold text-lg text-white tracking-wide">VARIEDADES ROMEO</h4>
                 <p class="text-xs text-yellow-400 font-semibold mb-3">Tu Tienda de Confianza 🇸🇻</p>
-                <div class="text-[11px] text-gray-300 bg-black/40 px-3 py-1.5 rounded-lg">
-                    <i class="fa-solid fa-location-dot text-red-400 mr-1"></i> San Salvador, El Salvador
+                <div class="text-[11px] text-gray-300 bg-black/40 px-3 py-1.5 rounded-lg border border-white/10">
+                    <i class="fa-solid fa-location-dot text-red-400 mr-1"></i> Mejicanos, San Salvador
                 </div>
             </div>
         </div>
@@ -396,9 +410,9 @@
             <div>
                 <h4 class="font-bold text-gray-900 mb-3 uppercase text-xs tracking-wider">Servicio al Cliente</h4>
                 <ul class="space-y-2 text-xs">
-                    <li><button onclick="openTrackOrderModal()" class="hover:text-brand-blue">Rastrear mi pedido</button></li>
-                    <li><button onclick="openPickupModal()" class="hover:text-brand-blue">Retiro en Sucursal</button></li>
-                    <li><button onclick="openSheetsModal()" class="hover:text-brand-blue text-emerald-600 font-bold"><i class="fa-solid fa-file-excel mr-1"></i> Configurar Hoja de Cálculo</button></li>
+                    <li><button onclick="openModal('trackOrderModal')" class="hover:text-brand-blue">Rastrear mi pedido</button></li>
+                    <li><button onclick="openModal('pickupModal')" class="hover:text-brand-blue">Retiro en Sucursal</button></li>
+                    <li><button onclick="openModal('sheetsModal')" class="hover:text-brand-blue text-emerald-600 font-bold"><i class="fa-solid fa-file-excel mr-1"></i> Configurar Catálogo Nube</button></li>
                     <li><a href="#" class="hover:text-brand-blue">Preguntas Frecuentes</a></li>
                 </ul>
             </div>
@@ -411,7 +425,7 @@
                     <i class="fa-brands fa-cc-visa"></i>
                     <i class="fa-brands fa-cc-mastercard"></i>
                     <i class="fa-solid fa-money-bill-wave"></i>
-                    <span class="text-xs font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded">Chivo / Cash</span>
+                    <span class="text-xs font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded">Chivo / Efectivo</span>
                 </div>
             </div>
 
@@ -423,8 +437,8 @@
         </div>
     </footer>
 
-    <!-- Floating WhatsApp Advisor (Exact match to floating advisor in screenshot) -->
-    <a href="https://wa.me/50377190952?text=Hola!%20Deseo%20asesor%C3%ADa%20de%20compra%20en%20Variedades%20Romeo" target="_blank" class="fixed bottom-6 right-6 z-50 bg-brand-accent hover:bg-emerald-600 text-white p-3 sm:px-4 sm:py-3 rounded-full shadow-2xl flex items-center gap-3 transition-transform hover:scale-105 group border border-emerald-400">
+    <!-- Floating WhatsApp Advisor -->
+    <a href="https://wa.me/50377190952?text=Hola!%20Deseo%20asesor%C3%ADa%20de%20compra%20en%20Variedades%20Romeo" target="_blank" class="fixed bottom-6 right-6 z-40 bg-brand-accent hover:bg-emerald-600 text-white p-3 sm:px-4 sm:py-3 rounded-full shadow-2xl flex items-center gap-3 transition-transform hover:scale-105 group border border-emerald-400">
         <i class="fa-brands fa-whatsapp text-2xl sm:text-3xl"></i>
         <div class="hidden sm:block text-left">
             <span class="block text-[10px] uppercase tracking-wider font-semibold opacity-90 leading-none">¿Necesitas ayuda?</span>
@@ -432,1051 +446,755 @@
         </div>
     </a>
 
-    <!-- Cart Drawer -->
-    <div id="cartDrawer" class="fixed inset-0 z-50 overflow-hidden pointer-events-none transition-opacity duration-300 opacity-0">
-        <div id="cartBackdrop" onclick="toggleCartDrawer()" class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
-        
-        <div class="fixed inset-y-0 right-0 max-w-full flex pl-10 pointer-events-auto">
-            <div id="cartContent" class="w-screen max-w-md bg-white shadow-2xl flex flex-col transform translate-x-full transition-transform duration-300">
-                
-                <!-- Drawer Header -->
-                <div class="p-4 sm:p-6 bg-gray-900 text-white flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <i class="fa-solid fa-bag-shopping text-xl text-yellow-400"></i>
-                        <h3 class="font-bold text-lg font-heading">Tu Carrito de Compra</h3>
-                    </div>
-                    <button onclick="toggleCartDrawer()" class="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-300">
-                        <i class="fa-solid fa-xmark text-lg"></i>
-                    </button>
-                </div>
-
-                <!-- Promo Banner inside cart -->
-                <div class="bg-blue-50 px-4 py-2 text-xs text-brand-blue font-semibold flex items-center justify-between border-b border-blue-100">
-                    <span>🎉 Descuento de Independencia (30% OFF)</span>
-                    <span class="bg-brand-blue text-white px-2 py-0.5 rounded text-[10px]">ACTIVO</span>
-                </div>
-
-                <!-- Cart Items List -->
-                <div id="cartItemsList" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-                    <!-- Dynamic Cart Items -->
-                </div>
-
-                <!-- Cart Summary & Checkout -->
-                <div class="p-4 sm:p-6 bg-gray-50 border-t border-gray-200 space-y-3">
-                    <div class="flex items-center justify-between text-sm text-gray-600">
-                        <span>Subtotal</span>
-                        <span id="cartSubtotal" class="font-semibold text-gray-900">$0.00</span>
-                    </div>
-                    <div class="flex items-center justify-between text-sm text-green-600 font-semibold">
-                        <span>Descuento (30% OFF)</span>
-                        <span id="cartDiscount">-$0.00</span>
-                    </div>
-                    <div class="flex items-center justify-between text-sm text-gray-600">
-                        <span>Envío</span>
-                        <span id="cartShipping" class="font-semibold text-green-600">¡GRATIS!</span>
-                    </div>
-                    <div class="border-t border-gray-200 pt-2 flex items-center justify-between text-lg font-extrabold text-gray-900">
-                        <span>Total</span>
-                        <span id="cartTotal">$0.00</span>
-                    </div>
-
-                    <button onclick="openCheckoutModal()" class="w-full bg-[#25d366] hover:bg-emerald-600 text-white font-bold py-3.5 rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2 text-sm uppercase tracking-wide">
-                        <i class="fa-brands fa-whatsapp text-lg"></i> Ordenar por WhatsApp
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Product Quick View Modal -->
-    <div id="productModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm hidden">
-        <div class="bg-white rounded-2xl max-w-2xl w-full overflow-hidden shadow-2xl relative max-h-[90vh] flex flex-col md:flex-row">
-            <button onclick="closeProductModal()" class="absolute top-3 right-3 z-10 w-9 h-9 bg-white/80 hover:bg-white rounded-full flex items-center justify-center text-gray-800 shadow">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
-            <div class="md:w-1/2 bg-gray-100">
-                <img id="modalImage" src="" alt="Producto" class="w-full h-64 md:h-full object-cover">
-            </div>
-            <div class="md:w-1/2 p-6 flex flex-col justify-between">
-                <div>
-                    <span id="modalCategory" class="text-xs font-bold text-brand-blue uppercase tracking-wider"></span>
-                    <h3 id="modalTitle" class="text-xl font-bold text-gray-900 font-heading mt-1 mb-2"></h3>
-                    <div class="flex items-center gap-3 mb-4">
-                        <span id="modalPrice" class="text-2xl font-black text-brand-burgundy font-heading"></span>
-                        <span id="modalOriginalPrice" class="text-sm text-gray-400 line-through"></span>
-                        <span class="bg-red-100 text-red-600 text-xs font-extrabold px-2 py-0.5 rounded">30% OFF</span>
-                    </div>
-                    <p id="modalDescription" class="text-xs text-gray-600 leading-relaxed mb-4"></p>
-                    
-                    <!-- Size selector mockup -->
-                    <div class="mb-4">
-                        <label class="block text-xs font-bold text-gray-700 mb-1">Talla disponble:</label>
-                        <div class="flex gap-2">
-                            <button class="px-3 py-1.5 border border-gray-300 rounded text-xs font-bold hover:border-brand-blue focus:border-brand-blue focus:bg-blue-50">S</button>
-                            <button class="px-3 py-1.5 border border-gray-300 rounded text-xs font-bold hover:border-brand-blue focus:border-brand-blue focus:bg-blue-50">M</button>
-                            <button class="px-3 py-1.5 border border-gray-300 rounded text-xs font-bold hover:border-brand-blue focus:border-brand-blue focus:bg-blue-50">L</button>
-                            <button class="px-3 py-1.5 border border-gray-300 rounded text-xs font-bold hover:border-brand-blue focus:border-brand-blue focus:bg-blue-50">XL</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="space-y-2 pt-4 border-t border-gray-100">
-                    <button id="modalAddToCartBtn" onclick="" class="w-full bg-brand-blue hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow transition-colors flex items-center justify-center gap-2 text-sm">
-                        <i class="fa-solid fa-bag-shopping"></i> Agregar al Carrito
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Order Tracking Modal -->
-    <div id="trackOrderModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm hidden">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
-            <button onclick="closeTrackOrderModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700">
-                <i class="fa-solid fa-xmark text-lg"></i>
-            </button>
-            <div class="text-center mb-6">
-                <div class="w-12 h-12 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mx-auto text-xl mb-2">
-                    <i class="fa-solid fa-box"></i>
-                </div>
-                <h3 class="text-xl font-bold font-heading">Rastrear mi Pedido</h3>
-                <p class="text-xs text-gray-500">Ingresa tu número de pedido o teléfono</p>
-            </div>
-            <form onsubmit="handleTrackOrder(event)" class="space-y-4">
-                <div>
-                    <input type="text" placeholder="Ej. VR-2026-9812" required class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:border-brand-blue focus:outline-none">
-                </div>
-                <button type="submit" class="w-full bg-brand-blue text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition-colors text-sm">
-                    Buscar Estado
-                </button>
-            </form>
-            <div id="trackResult" class="mt-4 p-4 bg-gray-50 rounded-xl text-xs text-gray-600 hidden">
-                <p class="font-bold text-green-600 mb-1"><i class="fa-solid fa-circle-check"></i> Pedido en Camino</p>
-                <p>Su pedido se encuentra asignado al repartidor en San Salvador.</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de Mi Cuenta -->
-    <div id="userModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm hidden">
-        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl relative">
-            <button onclick="closeUserModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition-colors">
-                <i class="fa-solid fa-xmark text-lg"></i>
-            </button>
-            <div class="text-center mb-6">
-                <div class="w-12 h-12 bg-blue-100 text-brand-blue rounded-full flex items-center justify-center mx-auto text-xl mb-2">
-                    <i class="fa-regular fa-user"></i>
-                </div>
-                <h3 class="text-xl font-bold font-heading">Mi Cuenta</h3>
-                <p class="text-xs text-gray-500">Inicia sesión para ver tus pedidos</p>
-            </div>
-            <form onsubmit="event.preventDefault(); closeUserModal(); showToast('Sesión iniciada exitosamente');" class="space-y-4">
-                <div>
-                    <input type="email" placeholder="Correo electrónico" required class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue">
-                </div>
-                <div>
-                    <input type="password" placeholder="Contraseña" required class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue">
-                </div>
-                <button type="submit" class="w-full bg-brand-navy text-white font-bold py-3 rounded-xl hover:bg-blue-900 transition-colors text-sm">
-                    Ingresar
-                </button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Modal de Configuración de Hoja de Cálculo (Google Sheets) -->
-    <div id="sheetsModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm hidden">
-        <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-            <button onclick="closeSheetsModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 transition-colors">
-                <i class="fa-solid fa-xmark text-lg"></i>
-            </button>
+    <!-- Cart Modal (Replaces old side drawer and operates like Wishlist Modal) -->
+    <div id="cartModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal('cartModal')"></div>
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md relative z-10 flex flex-col max-h-[85vh] overflow-hidden">
             
-            <div class="text-center mb-5">
-                <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-xl mb-2">
-                    <i class="fa-solid fa-file-excel"></i>
-                </div>
-                <h3 class="text-xl font-bold font-heading text-gray-900">Hoja de Cálculo de Productos</h3>
-                <p class="text-xs text-gray-500">Administra tu catálogo de productos en tiempo real</p>
-            </div>
-
-            <!-- Download CSV Template Button Box -->
-            <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-5 flex flex-col sm:flex-row items-center justify-between gap-3">
-                <div>
-                    <h4 class="text-xs font-bold text-emerald-900 uppercase tracking-wider">¿Necesitas la plantilla?</h4>
-                    <p class="text-xs text-emerald-700 mt-0.5">Descarga un archivo .CSV listo para abrir en Google Sheets o Excel.</p>
-                </div>
-                <button onclick="downloadCSVTemplate()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 whitespace-nowrap shadow transition-colors">
-                    <i class="fa-solid fa-download"></i> Descargar Plantilla .CSV
+            <!-- Modal Header -->
+            <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-2xl">
+                <h3 class="text-lg font-black font-heading flex items-center gap-2 text-gray-900">
+                    <i class="fa-solid fa-bag-shopping text-brand-blue"></i> Mi Carrito de Compra
+                </h3>
+                <button onclick="closeModal('cartModal')" class="text-gray-400 hover:text-gray-800 p-1 rounded-full hover:bg-gray-200 transition-colors">
+                    <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
-
-            <!-- Required Structure Guide -->
-            <div class="bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-5 text-xs text-gray-700 space-y-2">
-                <h4 class="font-bold text-gray-900 uppercase text-[11px] tracking-wider flex items-center gap-1.5">
-                    <i class="fa-solid fa-list-check text-brand-blue"></i> Columnas Requeridas en tu Hoja:
-                </h4>
-                <p class="text-[11px] text-gray-500">La primera fila de tu hoja de cálculo debe tener exactamente estos nombres:</p>
-                <div class="bg-white border border-gray-300 p-2.5 rounded-lg font-mono text-[11px] text-brand-burgundy overflow-x-auto font-bold select-all">
-                    id, nombre, categoria, precio, precioOriginal, imagen, descripcion
-                </div>
+            
+            <!-- Cart Items List Container -->
+            <div id="cartItemsContainer" class="p-4 overflow-y-auto flex-1 space-y-3 bg-white">
+                <!-- Javascript populates items -->
             </div>
-
-            <!-- Step by Step instructions -->
-            <div class="space-y-2 mb-6 text-xs text-gray-600 border-t border-gray-100 pt-4">
-                <h4 class="font-bold text-gray-900 uppercase text-[11px] tracking-wider">Cómo publicar en Google Sheets:</h4>
-                <ol class="list-decimal list-inside space-y-1.5 pl-1 text-[11px]">
-                    <li>Abre <a href="https://sheets.new" target="_blank" class="text-brand-blue font-bold underline">Google Sheets</a> e importa la plantilla o crea tu tabla.</li>
-                    <li>Ve al menú: <strong>Archivo &gt; Compartir &gt; Publicar en la web</strong>.</li>
-                    <li>En el desplegable, selecciona tu hoja y elige <strong>Valores separados por comas (.csv)</strong>.</li>
-                    <li>Haz clic en <strong>Publicar</strong>, copia el enlace generado y pégalo abajo.</li>
-                </ol>
-            </div>
-
-            <!-- Form to save Google Sheets URL -->
-            <form onsubmit="handleSaveSheetsUrl(event)" class="space-y-4 border-t border-gray-100 pt-4">
-                <div>
-                    <label class="block text-xs font-bold text-gray-700 mb-1">Enlace CSV de tu Google Sheets:</label>
-                    <input type="url" id="sheetsUrlInput" placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=csv" class="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-xs focus:border-brand-blue focus:outline-none focus:ring-1 focus:ring-brand-blue">
-                </div>
-                <div class="flex gap-2">
-                    <button type="submit" class="flex-1 bg-brand-blue hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-colors text-xs flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-link"></i> Guardar y Conectar
-                    </button>
-                    <button type="button" onclick="handleResetSheetsUrl()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold px-4 py-3 rounded-xl transition-colors text-xs">
-                        Usar Demo
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Drawer de Favoritos (Wishlist) -->
-    <div id="wishlistDrawer" class="fixed inset-0 z-50 overflow-hidden pointer-events-none transition-opacity duration-300 opacity-0">
-        <div id="wishlistBackdrop" onclick="closeWishlist()" class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"></div>
-        <div class="fixed inset-y-0 right-0 max-w-full flex pl-10 pointer-events-auto">
-            <div id="wishlistContent" class="w-screen max-w-md bg-white shadow-2xl flex flex-col transform translate-x-full transition-transform duration-300">
-                <div class="p-4 sm:p-6 bg-red-50 text-red-600 border-b border-red-100 flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <i class="fa-solid fa-heart text-xl"></i>
-                        <h3 class="font-bold text-lg font-heading">Tus Favoritos</h3>
+            
+            <!-- Modal Footer Summary -->
+            <div class="border-t border-gray-100 p-4 bg-gray-50 space-y-3 rounded-b-2xl">
+                <div class="space-y-1.5 text-xs sm:text-sm">
+                    <div class="flex justify-between"><span class="text-gray-500">Subtotal</span><span id="cartSubtotal" class="font-bold text-gray-800">$0.00</span></div>
+                    <div class="flex justify-between"><span class="text-gray-500">Envío <span class="text-[10px] text-green-600 font-bold ml-1 bg-green-50 px-1 rounded">Gratis > $35</span></span><span id="cartShipping" class="font-bold text-gray-800">$0.00</span></div>
+                    <div class="flex justify-between items-center border-t border-gray-200 pt-2 text-base font-black font-heading">
+                        <span class="text-gray-900">Total</span>
+                        <span id="cartTotal" class="text-xl text-brand-blue">$0.00</span>
                     </div>
-                    <button onclick="closeWishlist()" class="p-2 hover:bg-red-100 rounded-full transition-colors">
-                        <i class="fa-solid fa-xmark text-lg"></i>
-                    </button>
                 </div>
-                <div id="wishlistItemsList" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-gray-50">
-                    <!-- Los productos favoritos aparecerán aquí -->
+                <button onclick="checkoutWhatsApp()" class="w-full bg-brand-accent hover:bg-emerald-600 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-all hover:-translate-y-0.5 text-sm">
+                    <i class="fa-brands fa-whatsapp text-lg"></i> Confirmar Pedido por WhatsApp
+                </button>
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed top-24 right-4 sm:right-6 z-[60] flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Google Sheets Setup Modal -->
+    <div id="sheetsModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal('sheetsModal')"></div>
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md relative z-10 overflow-hidden">
+            <div class="bg-emerald-600 p-4 text-white flex justify-between items-center">
+                <h3 class="font-bold font-heading flex items-center gap-2"><i class="fa-solid fa-cloud-arrow-down"></i> Catálogo desde Google Sheets</h3>
+                <button onclick="closeModal('sheetsModal')" class="hover:text-emerald-200"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="p-6 space-y-4 text-sm text-gray-600">
+                <p>Ingresa la URL pública en formato <strong>CSV</strong> de tu documento de Google Sheets para cargar tus productos dinámicamente.</p>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">URL del CSV Público</label>
+                    <input type="text" id="sheetsUrl" placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=csv" class="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-xs shadow-inner">
+                </div>
+                <div class="bg-emerald-50 p-3 rounded-lg border border-emerald-100 text-[11px] text-emerald-800">
+                    <strong class="block mb-1">¿Cómo obtener el enlace?</strong>
+                    En Google Sheets ve a: Archivo > Compartir > Publicar en la web. Selecciona "Toda la hoja" y "Valores separados por comas (.csv)". Copia el enlace aquí.
+                    <br><br>
+                    <strong class="block mb-1">Columnas requeridas:</strong>
+                    id, name, category (caballero/dama/calzado/accesorios), price, image (URL), description, offer (true/false)
+                </div>
+                <div class="flex gap-2 pt-2">
+                    <button onclick="loadFromGoogleSheets()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg transition-colors shadow-md">Sincronizar Datos</button>
+                    <button onclick="resetDefaultProducts()" class="px-4 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2.5 rounded-lg transition-colors" title="Restaurar Demo">Restaurar</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Notification Toast -->
-    <div id="toast" class="fixed top-24 right-4 z-50 bg-gray-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 transform translate-y-[-100px] opacity-0 transition-all duration-300">
-        <i class="fa-solid fa-circle-check text-green-400 text-lg"></i>
-        <span id="toastMessage" class="text-sm font-semibold">Producto agregado</span>
+    <!-- Product Details Modal -->
+    <div id="productModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeModal('productModal')"></div>
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl relative z-10 overflow-hidden flex flex-col md:flex-row max-h-[90vh]">
+            <button onclick="closeModal('productModal')" class="absolute top-4 right-4 z-20 w-8 h-8 bg-white/50 backdrop-blur rounded-full flex items-center justify-center text-gray-800 hover:bg-white shadow-sm"><i class="fa-solid fa-xmark"></i></button>
+            
+            <!-- Img Side -->
+            <div class="md:w-1/2 bg-gray-100 relative h-64 md:h-auto">
+                <img id="modalImg" src="" alt="Producto" class="w-full h-full object-cover">
+                <span id="modalOfferBadge" class="hidden absolute top-4 left-4 bg-red-600 text-white text-[10px] font-black uppercase px-2.5 py-1 rounded-sm shadow-md">Oferta Especial</span>
+            </div>
+            
+            <!-- Info Side -->
+            <div class="md:w-1/2 p-6 md:p-8 flex flex-col overflow-y-auto">
+                <span id="modalCategory" class="text-xs font-bold text-brand-blue uppercase tracking-widest mb-1">Categoría</span>
+                <h2 id="modalTitle" class="text-2xl md:text-3xl font-black font-heading text-gray-900 mb-2 leading-tight">Nombre del Producto</h2>
+                <div class="flex items-end gap-3 mb-4 border-b border-gray-100 pb-4">
+                    <span id="modalPrice" class="text-3xl font-black text-brand-blue font-heading">$0.00</span>
+                    <span id="modalOldPrice" class="text-lg text-gray-400 line-through mb-1 hidden">$0.00</span>
+                </div>
+                <p id="modalDesc" class="text-gray-600 text-sm mb-6 leading-relaxed">Descripción del producto.</p>
+                
+                <div class="mb-6 space-y-3">
+                    <label class="block text-xs font-bold text-gray-800 uppercase tracking-wider">Talla / Tamaño</label>
+                    <div class="flex flex-wrap gap-2" id="modalSizes">
+                        <!-- Tallas generadas dinámicamente -->
+                        <button class="w-10 h-10 rounded-lg border-2 border-brand-blue bg-blue-50 text-brand-blue font-bold text-sm">S</button>
+                        <button class="w-10 h-10 rounded-lg border border-gray-200 hover:border-gray-300 text-gray-600 font-bold text-sm">M</button>
+                        <button class="w-10 h-10 rounded-lg border border-gray-200 hover:border-gray-300 text-gray-600 font-bold text-sm">L</button>
+                        <button class="w-10 h-10 rounded-lg border border-gray-200 hover:border-gray-300 text-gray-600 font-bold text-sm">XL</button>
+                    </div>
+                </div>
+
+                <div class="mt-auto pt-4 flex gap-3">
+                    <button id="modalAddToCart" class="flex-1 bg-brand-blue hover:bg-blue-800 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all hover:-translate-y-1 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-cart-plus"></i> Agregar al Carrito
+                    </button>
+                    <button id="modalWishlistBtn" class="w-14 h-14 rounded-xl border border-gray-200 flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 transition-colors text-xl">
+                        <i class="fa-regular fa-heart"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pickup & Track Modals (Simple informational UI) -->
+    <div id="pickupModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal('pickupModal')"></div>
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm relative z-10 p-6 text-center">
+            <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-2xl mx-auto mb-4"><i class="fa-solid fa-store"></i></div>
+            <h3 class="text-xl font-black font-heading mb-2">Retiro en Sucursal</h3>
+            <p class="text-sm text-gray-600 mb-6">Puedes recoger tus compras sin costo adicional en nuestra tienda física en Mejicanos, San Salvador.</p>
+            <button onclick="closeModal('pickupModal')" class="w-full bg-gray-900 text-white font-bold py-3 rounded-xl hover:bg-gray-800">Entendido</button>
+        </div>
+    </div>
+
+    <div id="trackOrderModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal('trackOrderModal')"></div>
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm relative z-10 p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-black font-heading">Rastrear Pedido</h3>
+                <button onclick="closeModal('trackOrderModal')" class="text-gray-400 hover:text-gray-800"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <p class="text-sm text-gray-600 mb-4">Ingresa tu número de guía de Correos o Cargo Expreso.</p>
+            <input type="text" placeholder="Ej. SV123456789" class="w-full border border-gray-300 rounded-lg p-3 text-sm mb-4 outline-none focus:border-brand-blue">
+            <button onclick="closeModal('trackOrderModal'); showToast('Sistema de rastreo temporalmente en mantenimiento', 'error')" class="w-full bg-brand-blue text-white font-bold py-3 rounded-xl hover:bg-blue-800">Consultar Estado</button>
+        </div>
+    </div>
+
+    <div id="userModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal('userModal')"></div>
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm relative z-10 p-6 text-center">
+            <div class="w-16 h-16 bg-blue-100 text-brand-blue rounded-full flex items-center justify-center text-2xl mx-auto mb-4"><i class="fa-solid fa-user-lock"></i></div>
+            <h3 class="text-xl font-black font-heading mb-2">Mi Cuenta</h3>
+            <p class="text-sm text-gray-600 mb-6">El sistema de cuentas de usuario estará disponible próximamente en nuestra V2.</p>
+            <button onclick="closeModal('userModal')" class="w-full bg-gray-900 text-white font-bold py-3 rounded-xl hover:bg-gray-800">Volver a la tienda</button>
+        </div>
+    </div>
+    
+    <div id="wishlistModal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeModal('wishlistModal')"></div>
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md relative z-10 flex flex-col max-h-[80vh]">
+            <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-2xl">
+                <h3 class="text-lg font-black font-heading flex items-center gap-2 text-red-500"><i class="fa-solid fa-heart"></i> Mis Favoritos</h3>
+                <button onclick="closeModal('wishlistModal')" class="text-gray-400 hover:text-gray-800"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div id="wishlistItemsContainer" class="p-4 overflow-y-auto flex-1 space-y-3 bg-white">
+                <!-- Javascript populates -->
+            </div>
+        </div>
     </div>
 
     <script>
-        // Para usar Google Sheets, ve a tu hoja de cálculo: Archivo > Compartir > Publicar en la web > Selecciona tu hoja > Elige "Valores separados por comas (.csv)" y pega el enlace generado abajo.
-        // Las columnas de tu Excel deben llamarse exactamente: id, nombre, categoria, precio, precioOriginal, imagen, descripcion
-        const GOOGLE_SHEETS_URL = ""; 
+        // --- STATE MANAGEMENT ---
+        let products = [];
+        let cart = [];
+        let wishlist = [];
+        let currentCategory = 'todos';
 
-        // Sample Product Data for Variedades Romeo (Se usarán si no configuras el enlace CSV de arriba)
-        let products = [
-            {
-                id: 1,
-                name: "Camisa Polo Casual Romeo Slim",
-                category: "caballero",
-                price: 18.20,
-                originalPrice: 26.00,
-                image: "https://images.unsplash.com/photo-1625910513413-5fc281313495?auto=format&fit=crop&w=600&q=80",
-                description: "Camisa estilo polo fresca y elegante, ideal para clima cálido y eventos casuales."
-            },
-            {
-                id: 2,
-                name: "Camisa Manga Larga Vestir Elegance",
-                category: "caballero",
-                price: 24.50,
-                originalPrice: 35.00,
-                image: "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?auto=format&fit=crop&w=600&q=80",
-                description: "Camisa formal confeccionada en algodón suave, corte ajustado moderno."
-            },
-            {
-                id: 3,
-                name: "Vestido Casual de Verano Floral",
-                category: "dama",
-                price: 21.00,
-                originalPrice: 30.00,
-                image: "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=600&q=80",
-                description: "Vestido ligero con estampado floral, cómodo y fresco para el día a día."
-            },
-            {
-                id: 4,
-                name: "Blusa Urbana Estilo Romántico",
-                category: "dama",
-                price: 15.40,
-                originalPrice: 22.00,
-                image: "https://images.unsplash.com/photo-1564257631407-4deb12a1018f?auto=format&fit=crop&w=600&q=80",
-                description: "Blusa elegante de manga corta con finos detalles y cuello sutil."
-            },
-            {
-                id: 5,
-                name: "Sneakers Urbanos Romeo Style",
-                category: "calzado",
-                price: 34.30,
-                originalPrice: 49.00,
-                image: "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?auto=format&fit=crop&w=600&q=80",
-                description: "Calzado deportivo moderno con suela acolchada para máxima durabilidad y confort."
-            },
-            {
-                id: 6,
-                name: "Zapatos Casuales de Cuero Sintético",
-                category: "calzado",
-                price: 29.40,
-                originalPrice: 42.00,
-                image: "https://images.unsplash.com/photo-1533867617858-e7b97e060509?auto=format&fit=crop&w=600&q=80",
-                description: "Mocasines de vestir versátiles para oficina o compromisos formales."
-            },
-            {
-                id: 7,
-                name: "Gorra Urbana Snapback Edición Especial",
-                category: "accesorios",
-                price: 11.20,
-                originalPrice: 16.00,
-                image: "https://images.unsplash.com/photo-1588850561407-ed78c282e89b?auto=format&fit=crop&w=600&q=80",
-                description: "Gorra con bordado de alta precisión y visera resistente."
-            },
-            {
-                id: 8,
-                name: "Cinturón de Cuero Reversible",
-                category: "accesorios",
-                price: 9.80,
-                originalPrice: 14.00,
-                image: "https://images.unsplash.com/photo-1624222247344-550fb60583dc?auto=format&fit=crop&w=600&q=80",
-                description: "Cinturón masculino doble faz con hebilla metálica de alta calidad."
-            }
+        // --- DEFAULT DEMO DATA ---
+        const defaultProducts = [
+            { id: '1', name: 'Camisa Polo Premium Azul', category: 'caballero', price: 24.99, image: 'https://images.unsplash.com/photo-1581655353564-df123a1eb820?auto=format&fit=crop&w=400&q=80', description: 'Polo de algodón 100% de alta transpirabilidad. Ideal para el clima salvadoreño.', offer: false },
+            { id: '2', name: 'Chaqueta Denim Clásica', category: 'caballero', price: 45.00, image: 'https://images.unsplash.com/photo-1495105787522-5334e3ffa0ef?auto=format&fit=crop&w=400&q=80', description: 'Chaqueta de lona resistente, diseño atemporal para cualquier ocasión.', offer: true },
+            { id: '3', name: 'Blusa Estampado Floral', category: 'dama', price: 18.50, image: 'https://images.unsplash.com/photo-1572804013309-84a8f9f69bf9?auto=format&fit=crop&w=400&q=80', description: 'Blusa fresca con estampado de temporada. Tela suave y cómoda.', offer: false },
+            { id: '4', name: 'Vestido Largo de Noche', category: 'dama', price: 55.00, image: 'https://images.unsplash.com/photo-1539008835657-9e8e9680c956?auto=format&fit=crop&w=400&q=80', description: 'Elegancia total. Vestido largo con abertura lateral y espalda descubierta.', offer: false },
+            { id: '5', name: 'Sneakers Urbanos Blancos', category: 'calzado', price: 35.99, image: 'https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?auto=format&fit=crop&w=400&q=80', description: 'Comodidad para tu día a día. Plantilla memory foam y diseño minimalista.', offer: false },
+            { id: '6', name: 'Zapatos de Vestir Oxford', category: 'calzado', price: 60.00, image: 'https://images.unsplash.com/photo-1614252339460-e1762c66861d?auto=format&fit=crop&w=400&q=80', description: 'Cuero genuino, acabados a mano. El toque final para tu traje.', offer: true },
+            { id: '7', name: 'Gorra Snapback Logo', category: 'accesorios', price: 12.00, image: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?auto=format&fit=crop&w=400&q=80', description: 'Gorra ajustable estilo urbano con logo bordado en relieve.', offer: false },
+            { id: '8', name: 'Reloj Analógico Minimalista', category: 'accesorios', price: 28.50, image: 'https://images.unsplash.com/photo-1524592094714-a5764260ae51?auto=format&fit=crop&w=400&q=80', description: 'Correa de cuero sintético, maquinaria resistente al agua 3ATM.', offer: true },
+            { id: '9', name: 'Jeans Skinny Fit Negro', category: 'caballero', price: 29.99, image: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=400&q=80', description: 'Pantalón ajustado con stretch para mayor comodidad de movimiento.', offer: false },
+            { id: '10', name: 'Cartera de Mano Cuero', category: 'accesorios', price: 22.00, image: 'https://images.unsplash.com/photo-1584916201218-f4242ceb4809?auto=format&fit=crop&w=400&q=80', description: 'Múltiples compartimentos para tarjetas y billetes. Diseño elegante.', offer: false }
         ];
 
-        let cart = JSON.parse(localStorage.getItem('romeo_cart') || '[]');
-        let wishlist = JSON.parse(localStorage.getItem('romeo_wishlist') || '[]');
-        let currentFilteredProducts = [];
+        // --- INITIALIZATION ---
+        window.onload = () => {
+            // Check local storage for existing cart/wishlist/products
+            const savedCart = localStorage.getItem('romeo_cart');
+            const savedWishlist = localStorage.getItem('romeo_wishlist');
+            const savedProducts = localStorage.getItem('romeo_products');
+            
+            if (savedCart) cart = JSON.parse(savedCart);
+            if (savedWishlist) wishlist = JSON.parse(savedWishlist);
+            
+            if (savedProducts) {
+                products = JSON.parse(savedProducts);
+            } else {
+                products = [...defaultProducts];
+            }
 
-        function saveCart() {
-            localStorage.setItem('romeo_cart', JSON.stringify(cart));
+            updateBadges();
+            renderProducts(currentCategory);
+        };
+
+        // --- UTILS & UI FEEDBACK ---
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            const bgClass = type === 'success' ? 'bg-emerald-600' : (type === 'error' ? 'bg-red-500' : 'bg-gray-800');
+            const icon = type === 'success' ? '<i class="fa-solid fa-circle-check"></i>' : (type === 'error' ? '<i class="fa-solid fa-circle-exclamation"></i>' : '<i class="fa-solid fa-bell"></i>');
+            
+            toast.className = `${bgClass} text-white px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-3 transform translate-y-4 opacity-0 transition-all duration-300`;
+            toast.innerHTML = `${icon} <span>${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            // Animate in
+            setTimeout(() => {
+                toast.classList.remove('translate-y-4', 'opacity-0');
+            }, 10);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
 
-        function saveWishlist() {
-            localStorage.setItem('romeo_wishlist', JSON.stringify(wishlist));
+        function formatMoney(amount) {
+            return '$' + parseFloat(amount).toFixed(2);
         }
 
-        function findProductById(id) {
-            return products.find(p => String(p.id) === String(id));
-        }
-
-        function isInWishlist(id) {
-            return wishlist.some(wId => String(wId) === String(id));
-        }
-
-        function renderProducts(itemsToRender) {
-            currentFilteredProducts = itemsToRender || products;
-            const grid = document.getElementById('productGrid');
-            if (!grid) return;
-            grid.innerHTML = '';
-
-            if (currentFilteredProducts.length === 0) {
-                grid.innerHTML = `
-                    <div class="col-span-full text-center py-12 bg-white rounded-2xl border border-gray-100">
-                        <i class="fa-solid fa-magnifying-glass text-4xl text-gray-300 mb-2"></i>
-                        <p class="font-bold text-gray-600">No se encontraron productos</p>
-                    </div>
-                `;
+        // --- STREAMING_CHUNK: Implementing Google Sheets CSV Parsing... ---
+        function loadFromGoogleSheets() {
+            const urlInput = document.getElementById('sheetsUrl').value.trim();
+            if (!urlInput || !urlInput.includes('google.com/spreadsheets')) {
+                showToast('Ingresa una URL válida de Google Sheets (formato CSV)', 'error');
                 return;
             }
 
-            currentFilteredProducts.forEach(product => {
-                const card = document.createElement('div');
-                card.className = "bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl border border-gray-100 transition-all duration-300 flex flex-col justify-between group";
-                
-                const isFav = isInWishlist(product.id);
-                const priceNum = parseFloat(product.price) || 0;
-                const origPrice = product.originalPrice ? parseFloat(product.originalPrice) : (priceNum * 1.3);
+            showToast('Sincronizando catálogo...', 'info');
+            closeModal('sheetsModal');
 
-                card.innerHTML = `
-                    <div class="relative aspect-[4/5] bg-gray-100 overflow-hidden cursor-pointer" onclick="openProductModal('${product.id}')">
-                        <img src="${product.image}" alt="${product.name}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onerror="this.src='https://placehold.co/600x800/eeeeee/999999?text=Sin+Imagen'">
-                        <span class="absolute top-3 left-3 bg-red-600 text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider shadow">
-                            30% OFF
-                        </span>
-                        <button onclick="event.stopPropagation(); toggleWishlist('${product.id}')" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/80 backdrop-blur-md flex items-center justify-center text-gray-600 hover:text-red-500 transition-colors shadow">
-                            <i class="${isFav ? 'fa-solid text-red-500' : 'fa-regular'} fa-heart"></i>
-                        </button>
-                    </div>
-
-                    <div class="p-4 flex-1 flex flex-col justify-between">
-                        <div>
-                            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">${product.category}</span>
-                            <h3 class="font-extrabold text-sm text-gray-900 group-hover:text-brand-blue transition-colors line-clamp-2 mt-0.5 cursor-pointer" onclick="openProductModal('${product.id}')">
-                                ${product.name}
-                            </h3>
-                        </div>
-
-                        <div class="mt-4 pt-3 border-t border-gray-50 flex items-center justify-between">
-                            <div>
-                                <span class="text-xs text-gray-400 line-through block">$${origPrice.toFixed(2)}</span>
-                                <span class="text-lg font-black text-brand-burgundy font-heading">$${priceNum.toFixed(2)}</span>
-                            </div>
-                            <button onclick="addToCart('${product.id}')" class="bg-gray-900 hover:bg-brand-blue text-white p-2.5 rounded-xl transition-colors shadow" title="Agregar al carrito">
-                                <i class="fa-solid fa-cart-plus text-sm"></i>
-                            </button>
-                        </div>
-                    </div>
-                `;
-                grid.appendChild(card);
+            Papa.parse(urlInput, {
+                download: true,
+                header: true,
+                dynamicTyping: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    if (results.data && results.data.length > 0) {
+                        try {
+                            // Map and validate columns
+                            const newProducts = results.data.map(row => ({
+                                id: String(row.id || Math.random().toString(36).substr(2, 9)),
+                                name: row.name || 'Producto sin nombre',
+                                category: (row.category || 'otros').toLowerCase(),
+                                price: parseFloat(row.price || 0),
+                                image: row.image || 'https://via.placeholder.com/400x500?text=Sin+Imagen',
+                                description: row.description || '',
+                                offer: String(row.offer).toLowerCase() === 'true' || row.offer === true
+                            }));
+                            
+                            products = newProducts;
+                            localStorage.setItem('romeo_products', JSON.stringify(products));
+                            renderProducts(currentCategory);
+                            showToast('Catálogo actualizado exitosamente', 'success');
+                            document.getElementById('sheetsUrl').value = '';
+                        } catch (e) {
+                            console.error(e);
+                            showToast('Error en el formato del CSV. Revisa las columnas.', 'error');
+                        }
+                    } else {
+                        showToast('El documento CSV está vacío', 'error');
+                    }
+                },
+                error: function(err) {
+                    console.error("PapaParse error:", err);
+                    showToast('Error al conectar con Google Sheets. Verifica que el enlace sea público (Publicar en la web > CSV).', 'error');
+                }
             });
         }
 
-        function filterCategory(category) {
+        function resetDefaultProducts() {
+            products = [...defaultProducts];
+            localStorage.removeItem('romeo_products');
+            renderProducts(currentCategory);
+            closeModal('sheetsModal');
+            showToast('Catálogo de demostración restaurado', 'success');
+        }
+
+        // --- STREAMING_CHUNK: Rendering the Product Grid dynamically... ---
+        function filterCategory(cat) {
+            currentCategory = cat;
+            
+            // Update active state on buttons
+            document.querySelectorAll('.cat-btn').forEach(btn => {
+                if(btn.id !== 'btn-ofertas') {
+                    btn.classList.remove('bg-brand-blue', 'text-white', 'shadow-md');
+                    btn.classList.add('bg-gray-100', 'text-gray-700');
+                }
+            });
+            
+            const activeBtnId = cat === 'todos' ? 'btn-todos' : `btn-${cat}`;
+            const activeBtn = document.getElementById(activeBtnId);
+            if (activeBtn && activeBtnId !== 'btn-ofertas') {
+                activeBtn.classList.remove('bg-gray-100', 'text-gray-700');
+                activeBtn.classList.add('bg-brand-blue', 'text-white', 'shadow-md');
+            }
+
+            // Update title
+            const titles = {
+                'todos': 'Todos los Productos',
+                'caballero': 'Moda Caballero',
+                'dama': 'Moda Dama',
+                'calzado': 'Calzado Exclusivo',
+                'accesorios': 'Accesorios',
+                'ofertas': 'Ofertas Especiales 🔥'
+            };
+            document.getElementById('catalogTitle').innerText = titles[cat] || 'Resultados de búsqueda';
+
+            renderProducts(cat);
+        }
+
+        function renderProducts(filterStr, isSearch = false) {
+            const grid = document.getElementById('productGrid');
+            const emptyState = document.getElementById('emptyState');
+            grid.innerHTML = '';
+            
+            let filtered = [];
+            
+            if (isSearch) {
+                const term = filterStr.toLowerCase();
+                filtered = products.filter(p => p.name.toLowerCase().includes(term) || p.description.toLowerCase().includes(term));
+            } else {
+                if (filterStr === 'todos') {
+                    filtered = products;
+                } else if (filterStr === 'ofertas') {
+                    filtered = products.filter(p => p.offer);
+                } else {
+                    filtered = products.filter(p => p.category === filterStr);
+                }
+            }
+
+            if (filtered.length === 0) {
+                grid.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+            } else {
+                grid.classList.remove('hidden');
+                emptyState.classList.add('hidden');
+                
+                filtered.forEach(p => {
+                    const isWished = wishlist.some(w => w.id === p.id);
+                    const heartClass = isWished ? 'fa-solid text-red-500' : 'fa-regular text-gray-400';
+                    
+                    const priceHtml = p.offer 
+                        ? `<span class="font-bold text-red-600">${formatMoney(p.price * 0.7)}</span> <span class="text-xs text-gray-400 line-through">${formatMoney(p.price)}</span>` 
+                        : `<span class="font-bold text-gray-900">${formatMoney(p.price)}</span>`;
+
+                    const offerBadge = p.offer ? `<span class="absolute top-2 left-2 bg-red-600 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded shadow-sm">30% OFF</span>` : '';
+
+                    const card = `
+                        <div class="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 group flex flex-col h-full">
+                            <div class="relative aspect-[4/5] bg-gray-100 overflow-hidden cursor-pointer" onclick="openProductModal('${p.id}')">
+                                ${offerBadge}
+                                <img src="${p.image}" alt="${p.name}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onerror="this.src='https://placehold.co/400x500/eee/999?text=Sin+Imagen'">
+                                <div class="absolute inset-0 bg-black/5 group-hover:bg-transparent transition-colors"></div>
+                                <button onclick="event.stopPropagation(); toggleWishlist('${p.id}')" class="absolute top-2 right-2 w-8 h-8 bg-white/80 backdrop-blur rounded-full flex items-center justify-center shadow-sm hover:bg-white transition-colors z-10">
+                                    <i class="fa-heart ${heartClass} text-sm transition-colors" id="heart-grid-${p.id}"></i>
+                                </button>
+                            </div>
+                            <div class="p-3 sm:p-4 flex flex-col flex-1">
+                                <span class="text-[9px] sm:text-[10px] font-bold text-brand-blue uppercase tracking-wider mb-1">${p.category}</span>
+                                <h4 class="font-bold text-gray-800 text-xs sm:text-sm mb-1 leading-tight line-clamp-2 cursor-pointer hover:text-brand-blue" onclick="openProductModal('${p.id}')">${p.name}</h4>
+                                <div class="mt-auto pt-2 flex items-center justify-between">
+                                    <div class="text-sm sm:text-base">${priceHtml}</div>
+                                    <button onclick="addToCart('${p.id}')" class="w-8 h-8 rounded-full bg-gray-100 text-gray-800 hover:bg-brand-blue hover:text-white flex items-center justify-center transition-colors">
+                                        <i class="fa-solid fa-plus text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    grid.insertAdjacentHTML('beforeend', card);
+                });
+            }
+        }
+
+        // --- STREAMING_CHUNK: Search logic... ---
+        function handleSearch(e) {
+            e.preventDefault();
+            const input1 = document.getElementById('searchInput').value;
+            const input2 = document.getElementById('mobileSearchInput').value;
+            const term = input1 || input2;
+            
+            if (term.trim() === '') return;
+            
+            document.getElementById('searchInput').value = '';
+            document.getElementById('mobileSearchInput').value = '';
+            document.getElementById('mobileSearch').classList.add('hidden');
+            
+            document.getElementById('catalogTitle').innerText = `Búsqueda: "${term}"`;
             document.querySelectorAll('.cat-btn').forEach(btn => {
                 btn.classList.remove('bg-brand-blue', 'text-white', 'shadow-md');
                 btn.classList.add('bg-gray-100', 'text-gray-700');
             });
+            
+            // Scroll to catalog
+            document.getElementById('catalogo').scrollIntoView({ behavior: 'smooth' });
+            renderProducts(term, true);
+        }
 
-            if (category === 'todos' || category === 'ofertas') {
-                renderProducts(products);
-            } else {
-                const filtered = products.filter(p => p.category === category);
-                renderProducts(filtered);
+        function toggleMobileSearch() {
+            const ms = document.getElementById('mobileSearch');
+            ms.classList.toggle('hidden');
+            if(!ms.classList.contains('hidden')) {
+                // Pequeño delay para asegurar que el display:block se haya aplicado antes del focus
+                setTimeout(() => {
+                    document.getElementById('mobileSearchInput').focus();
+                }, 50);
             }
         }
 
-        function addToCart(productId) {
-            const product = findProductById(productId);
-            if (!product) return;
-
-            const existing = cart.find(item => String(item.id) === String(productId));
-
-            if (existing) {
-                existing.quantity += 1;
-            } else {
-                cart.push({ ...product, quantity: 1 });
-            }
-
-            saveCart();
-            updateCartUI();
-            showToast(`¡${product.name} agregado al carrito!`);
-        }
-
-        function removeFromCart(productId) {
-            cart = cart.filter(item => String(item.id) !== String(productId));
-            saveCart();
-            updateCartUI();
-        }
-
-        function updateQuantity(productId, delta) {
-            const item = cart.find(i => String(i.id) === String(productId));
-            if (item) {
-                item.quantity += delta;
-                if (item.quantity <= 0) {
-                    removeFromCart(productId);
-                } else {
-                    saveCart();
-                    updateCartUI();
-                }
+        // --- STREAMING_CHUNK: Modals Logic (Product, Sheets, Generic)... ---
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.remove('hidden');
+            // Allow display block to apply before animating opacity
+            setTimeout(() => {
+                modal.firstElementChild.classList.add('opacity-100');
+                modal.lastElementChild.classList.add('modal-enter-active');
+            }, 10);
+            
+            if (modalId === 'wishlistModal') {
+                renderWishlist();
             }
         }
 
-        function updateCartUI() {
-            const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
-            document.getElementById('cartBadge').innerText = cartCount;
-
-            const cartList = document.getElementById('cartItemsList');
-            if (!cartList) return;
-            cartList.innerHTML = '';
-
-            let subtotal = 0;
-
-            if (cart.length === 0) {
-                cartList.innerHTML = `
-                    <div class="text-center py-12 text-gray-400">
-                        <i class="fa-solid fa-bag-shopping text-5xl mb-3 opacity-30"></i>
-                        <p class="font-bold text-sm text-gray-600">Tu carrito está vacío</p>
-                        <p class="text-xs text-gray-400 mt-1">Explora nuestro catálogo y agrega tus favoritos.</p>
-                    </div>
-                `;
-            } else {
-                cart.forEach(item => {
-                    const priceNum = parseFloat(item.price) || 0;
-                    const itemTotal = priceNum * item.quantity;
-                    subtotal += itemTotal;
-
-                    const cartItemEl = document.createElement('div');
-                    cartItemEl.className = "flex gap-3 bg-gray-50 p-3 rounded-xl border border-gray-100 items-center";
-                    cartItemEl.innerHTML = `
-                        <img src="${item.image}" class="w-16 h-16 rounded-lg object-cover" onerror="this.src='https://placehold.co/600x800/eeeeee/999999?text=Sin+Imagen'">
-                        <div class="flex-1">
-                            <h4 class="font-bold text-xs text-gray-900 line-clamp-1">${item.name}</h4>
-                            <p class="text-xs text-brand-burgundy font-black">$${priceNum.toFixed(2)}</p>
-                            <div class="flex items-center gap-2 mt-1">
-                                <button onclick="updateQuantity('${item.id}', -1)" class="w-5 h-5 bg-white border border-gray-300 rounded flex items-center justify-center text-xs font-bold">-</button>
-                                <span class="text-xs font-bold">${item.quantity}</span>
-                                <button onclick="updateQuantity('${item.id}', 1)" class="w-5 h-5 bg-white border border-gray-300 rounded flex items-center justify-center text-xs font-bold">+</button>
-                            </div>
-                        </div>
-                        <button onclick="removeFromCart('${item.id}')" class="text-gray-400 hover:text-red-500 p-1">
-                            <i class="fa-solid fa-trash-can text-sm"></i>
-                        </button>
-                    `;
-                    cartList.appendChild(cartItemEl);
-                });
-            }
-
-            document.getElementById('cartSubtotal').innerText = `$${subtotal.toFixed(2)}`;
-            document.getElementById('cartTotal').innerText = `$${subtotal.toFixed(2)}`;
-        }
-
-        function toggleCartDrawer() {
-            const drawer = document.getElementById('cartDrawer');
-            const content = document.getElementById('cartContent');
-
-            if (drawer.classList.contains('opacity-0')) {
-                drawer.classList.remove('opacity-0', 'pointer-events-none');
-                content.classList.remove('translate-x-full');
-            } else {
-                drawer.classList.add('opacity-0', 'pointer-events-none');
-                content.classList.add('translate-x-full');
-            }
-        }
-
-        function toggleWishlist(id) {
-            if (isInWishlist(id)) {
-                wishlist = wishlist.filter(wId => String(wId) !== String(id));
-                showToast("Eliminado de Favoritos");
-            } else {
-                wishlist.push(id);
-                showToast("¡Guardado en tus Favoritos!");
-            }
-            saveWishlist();
-            updateWishlistUIBadge();
-            renderProducts(currentFilteredProducts.length > 0 ? currentFilteredProducts : products);
-            if (!document.getElementById('wishlistDrawer').classList.contains('opacity-0')) {
-                renderWishlistUI();
-            }
-        }
-
-        function updateWishlistUIBadge() {
-            const countEl = document.getElementById('wishlistCount');
-            if (countEl) {
-                countEl.innerText = wishlist.length;
-                countEl.classList.toggle('hidden', wishlist.length === 0);
-            }
-        }
-
-        function openProductModal(id) {
-            const product = findProductById(id);
-            if (!product) return;
-
-            const priceNum = parseFloat(product.price) || 0;
-            const origPrice = product.originalPrice ? parseFloat(product.originalPrice) : (priceNum * 1.3);
-
-            document.getElementById('modalImage').src = product.image;
-            document.getElementById('modalCategory').innerText = product.category;
-            document.getElementById('modalTitle').innerText = product.name;
-            document.getElementById('modalPrice').innerText = `$${priceNum.toFixed(2)}`;
-            document.getElementById('modalOriginalPrice').innerText = `$${origPrice.toFixed(2)}`;
-            document.getElementById('modalDescription').innerText = product.description || 'Prenda de vestir y calzado exclusivo de Variedades Romeo.';
-
-            document.getElementById('modalAddToCartBtn').onclick = function() {
-                addToCart(product.id);
-                closeProductModal();
-            };
-
-            document.getElementById('productModal').classList.remove('hidden');
-        }
-
-        function closeProductModal() {
-            document.getElementById('productModal').classList.add('hidden');
-        }
-
-        function openTrackOrderModal() {
-            document.getElementById('trackOrderModal').classList.remove('hidden');
-        }
-
-        function closeTrackOrderModal() {
-            document.getElementById('trackOrderModal').classList.add('hidden');
-            document.getElementById('trackResult').classList.add('hidden');
-        }
-
-        function handleTrackOrder(e) {
-            e.preventDefault();
-            document.getElementById('trackResult').classList.remove('hidden');
-        }
-
-        function openPickupModal() {
-            showToast("Sucursal: San Salvador, El Salvador. Horario: 8:00 AM - 6:00 PM");
-        }
-
-        function openUserModal() {
-            document.getElementById('userModal').classList.remove('hidden');
-        }
-
-        function closeUserModal() {
-            document.getElementById('userModal').classList.add('hidden');
-        }
-
-        function openWishlist() {
-            const drawer = document.getElementById('wishlistDrawer');
-            const content = document.getElementById('wishlistContent');
-            drawer.classList.remove('opacity-0', 'pointer-events-none');
-            content.classList.remove('translate-x-full');
-            renderWishlistUI();
-        }
-
-        function closeWishlist() {
-            const drawer = document.getElementById('wishlistDrawer');
-            const content = document.getElementById('wishlistContent');
-            drawer.classList.add('opacity-0', 'pointer-events-none');
-            content.classList.add('translate-x-full');
-        }
-
-        function renderWishlistUI() {
-            const list = document.getElementById('wishlistItemsList');
-            if (!list) return;
-            list.innerHTML = '';
-
-            if (wishlist.length === 0) {
-                list.innerHTML = `
-                    <div class="text-center py-12 text-gray-400">
-                        <i class="fa-regular fa-heart text-5xl mb-3 opacity-30"></i>
-                        <p class="font-bold text-sm text-gray-600">No tienes favoritos aún</p>
-                        <button onclick="closeWishlist()" class="mt-4 text-xs font-bold text-brand-blue hover:underline">Explorar catálogo</button>
-                    </div>
-                `;
-                return;
-            }
-
-            const favoriteProducts = products.filter(p => isInWishlist(p.id));
-            if (favoriteProducts.length === 0) {
-                list.innerHTML = `
-                    <div class="text-center py-12 text-gray-400">
-                        <i class="fa-regular fa-heart text-5xl mb-3 opacity-30"></i>
-                        <p class="font-bold text-sm text-gray-600">No hay productos guardados en el catálogo actual</p>
-                    </div>
-                `;
-                return;
-            }
-
-            favoriteProducts.forEach(item => {
-                const priceNum = parseFloat(item.price) || 0;
-                const el = document.createElement('div');
-                el.className = "flex gap-3 bg-white p-3 rounded-xl border border-gray-200 items-center shadow-sm";
-                el.innerHTML = `
-                    <img src="${item.image}" class="w-16 h-16 rounded-lg object-cover cursor-pointer" onclick="openProductModal('${item.id}'); closeWishlist();" onerror="this.src='https://placehold.co/600x800/eeeeee/999999?text=Sin+Imagen'">
-                    <div class="flex-1">
-                        <h4 class="font-bold text-xs text-gray-900 line-clamp-1">${item.name}</h4>
-                        <p class="text-xs text-brand-burgundy font-black mt-1">$${priceNum.toFixed(2)}</p>
-                    </div>
-                    <div class="flex flex-col gap-2">
-                        <button onclick="addToCart('${item.id}'); showToast('Agregado desde favoritos');" class="bg-gray-900 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-brand-blue transition-colors" title="Al Carrito">
-                            <i class="fa-solid fa-cart-plus text-xs"></i>
-                        </button>
-                        <button onclick="toggleWishlist('${item.id}');" class="bg-red-50 text-red-500 w-8 h-8 rounded-full flex items-center justify-center hover:bg-red-100 transition-colors" title="Eliminar">
-                            <i class="fa-solid fa-trash-can text-xs"></i>
-                        </button>
-                    </div>
-                `;
-                list.appendChild(el);
-            });
-        }
-
-        async function loadCatalogFromSheets() {
-            const activeSheetsUrl = localStorage.getItem('romeo_sheets_url') || GOOGLE_SHEETS_URL;
-            if (activeSheetsUrl) {
-                try {
-                    Papa.parse(activeSheetsUrl, {
-                        download: true,
-                        header: true,
-                        complete: function(results) {
-                            if (results.data && results.data.length > 0) {
-                                products = results.data.filter(row => row.nombre).map((row, index) => ({
-                                    id: row.id ? row.id.toString() : (index + 100).toString(),
-                                    name: row.nombre,
-                                    category: (row.categoria || 'todos').toLowerCase(),
-                                    price: parseFloat(row.precio) || 0,
-                                    originalPrice: parseFloat(row.precioOriginal) || 0,
-                                    image: row.imagen || 'https://placehold.co/600x800/eeeeee/999999?text=Sin+Imagen',
-                                    description: row.descripcion || ''
-                                }));
-                                renderProducts(products);
-                            }
-                        },
-                        error: function(err) {
-                            console.error("Error al leer CSV:", err);
-                            renderProducts(products);
-                        }
-                    });
-                } catch (error) {
-                    console.error("Excepción al cargar CSV:", error);
-                    renderProducts(products);
-                }
-            } else {
-                renderProducts(products);
-            }
-        }
-
-        function addToCart(productId) {
-            const product = products.find(p => p.id === productId);
-            const existing = cart.find(item => item.id === productId);
-
-            if (existing) {
-                existing.quantity += 1;
-            } else {
-                cart.push({ ...product, quantity: 1 });
-            }
-
-            updateCartUI();
-            showToast(`¡${product.name} agregado al carrito!`);
-        }
-
-        function removeFromCart(productId) {
-            cart = cart.filter(item => item.id !== productId);
-            updateCartUI();
-        }
-
-        function updateQuantity(productId, delta) {
-            const item = cart.find(i => i.id === productId);
-            if (item) {
-                item.quantity += delta;
-                if (item.quantity <= 0) {
-                    removeFromCart(productId);
-                } else {
-                    updateCartUI();
-                }
-            }
-        }
-
-        function updateCartUI() {
-            const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
-            document.getElementById('cartBadge').innerText = cartCount;
-
-            const cartList = document.getElementById('cartItemsList');
-            cartList.innerHTML = '';
-
-            let subtotal = 0;
-
-            if (cart.length === 0) {
-                cartList.innerHTML = `
-                    <div class="text-center py-12 text-gray-400">
-                        <i class="fa-solid fa-bag-shopping text-5xl mb-3 opacity-30"></i>
-                        <p class="font-bold text-sm text-gray-600">Tu carrito está vacío</p>
-                        <p class="text-xs text-gray-400 mt-1">Explora nuestro catálogo y agrega tus favoritos.</p>
-                    </div>
-                `;
-            } else {
-                cart.forEach(item => {
-                    const itemTotal = item.price * item.quantity;
-                    subtotal += itemTotal;
-
-                    const cartItemEl = document.createElement('div');
-                    cartItemEl.className = "flex gap-3 bg-gray-50 p-3 rounded-xl border border-gray-100 items-center";
-                    cartItemEl.innerHTML = `
-                        <img src="${item.image}" class="w-16 h-16 rounded-lg object-cover">
-                        <div class="flex-1">
-                            <h4 class="font-bold text-xs text-gray-900 line-clamp-1">${item.name}</h4>
-                            <p class="text-xs text-brand-burgundy font-black">$${item.price.toFixed(2)}</p>
-                            <div class="flex items-center gap-2 mt-1">
-                                <button onclick="updateQuantity(${item.id}, -1)" class="w-5 h-5 bg-white border border-gray-300 rounded flex items-center justify-center text-xs font-bold">-</button>
-                                <span class="text-xs font-bold">${item.quantity}</span>
-                                <button onclick="updateQuantity(${item.id}, 1)" class="w-5 h-5 bg-white border border-gray-300 rounded flex items-center justify-center text-xs font-bold">+</button>
-                            </div>
-                        </div>
-                        <button onclick="removeFromCart(${item.id})" class="text-gray-400 hover:text-red-500 p-1">
-                            <i class="fa-solid fa-trash-can text-sm"></i>
-                        </button>
-                    `;
-                    cartList.appendChild(cartItemEl);
-                });
-            }
-
-            document.getElementById('cartSubtotal').innerText = `$${subtotal.toFixed(2)}`;
-            document.getElementById('cartTotal').innerText = `$${subtotal.toFixed(2)}`;
-        }
-
-        function toggleCartDrawer() {
-            const drawer = document.getElementById('cartDrawer');
-            const content = document.getElementById('cartContent');
-
-            if (drawer.classList.contains('opacity-0')) {
-                drawer.classList.remove('opacity-0', 'pointer-events-none');
-                content.classList.remove('translate-x-full');
-            } else {
-                drawer.classList.add('opacity-0', 'pointer-events-none');
-                content.classList.add('translate-x-full');
-            }
-        }
-
-        function toggleWishlist(id) {
-            if (wishlist.includes(id)) {
-                wishlist = wishlist.filter(item => item !== id);
-            } else {
-                wishlist.push(id);
-                showToast("Guardado en tus Favoritos");
-            }
-            const countEl = document.getElementById('wishlistCount');
-            countEl.innerText = wishlist.length;
-            countEl.classList.toggle('hidden', wishlist.length === 0);
-            renderProducts(products);
+        function closeModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.lastElementChild.classList.remove('modal-enter-active');
+            modal.lastElementChild.classList.add('modal-exit-active');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.lastElementChild.classList.remove('modal-exit-active');
+            }, 300);
         }
 
         function openProductModal(id) {
             const product = products.find(p => p.id === id);
-            if (!product) return;
+            if(!product) return;
 
-            document.getElementById('modalImage').src = product.image;
+            document.getElementById('modalImg').src = product.image;
             document.getElementById('modalCategory').innerText = product.category;
             document.getElementById('modalTitle').innerText = product.name;
-            document.getElementById('modalPrice').innerText = `$${product.price.toFixed(2)}`;
-            document.getElementById('modalOriginalPrice').innerText = `$${product.originalPrice.toFixed(2)}`;
-            document.getElementById('modalDescription').innerText = product.description;
+            document.getElementById('modalDesc').innerText = product.description;
+            
+            const isOffer = product.offer;
+            const finalPrice = isOffer ? product.price * 0.7 : product.price;
+            
+            document.getElementById('modalPrice').innerText = formatMoney(finalPrice);
+            
+            // Fix: Reset classes explicitly to avoid bug where non-offer items stay red
+            const priceEl = document.getElementById('modalPrice');
+            const oldPriceEl = document.getElementById('modalOldPrice');
+            const badgeEl = document.getElementById('modalOfferBadge');
 
-            document.getElementById('modalAddToCartBtn').onclick = function() {
-                addToCart(product.id);
-                closeProductModal();
+            if(isOffer) {
+                oldPriceEl.innerText = formatMoney(product.price);
+                oldPriceEl.classList.remove('hidden');
+                priceEl.classList.add('text-red-600');
+                badgeEl.classList.remove('hidden');
+            } else {
+                oldPriceEl.classList.add('hidden');
+                priceEl.classList.remove('text-red-600');
+                priceEl.classList.add('text-brand-blue'); // Ensure it goes back to blue
+                badgeEl.classList.add('hidden');
+            }
+
+            // Setup sizes based on category
+            const sizesContainer = document.getElementById('modalSizes');
+            sizesContainer.innerHTML = '';
+            let sizes = ['S', 'M', 'L', 'XL'];
+            if(product.category === 'calzado') sizes = ['38', '39', '40', '41', '42'];
+            if(product.category === 'accesorios') sizes = ['Única'];
+
+            sizes.forEach((s, idx) => {
+                const btn = document.createElement('button');
+                btn.className = idx === 0 
+                    ? 'w-10 h-10 rounded-lg border-2 border-brand-blue bg-blue-50 text-brand-blue font-bold text-sm transition-all size-btn selected-size'
+                    : 'w-10 h-10 rounded-lg border border-gray-200 hover:border-brand-blue hover:text-brand-blue text-gray-600 font-bold text-sm transition-all size-btn';
+                btn.innerText = s;
+                btn.onclick = () => selectSize(btn);
+                sizesContainer.appendChild(btn);
+            });
+
+            // Setup Buttons Actions
+            const addBtn = document.getElementById('modalAddToCart');
+            addBtn.onclick = () => {
+                const selectedSize = document.querySelector('.selected-size').innerText;
+                addToCart(product.id, selectedSize);
+                closeModal('productModal');
             };
 
-            document.getElementById('productModal').classList.remove('hidden');
+            const wishBtn = document.getElementById('modalWishlistBtn');
+            const isWished = wishlist.some(w => w.id === product.id);
+            wishBtn.innerHTML = isWished ? '<i class="fa-solid fa-heart"></i>' : '<i class="fa-regular fa-heart"></i>';
+            wishBtn.className = isWished 
+                ? 'w-14 h-14 rounded-xl border border-red-200 flex items-center justify-center text-red-500 bg-red-50 text-xl transition-colors'
+                : 'w-14 h-14 rounded-xl border border-gray-200 flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 text-xl transition-colors';
+            
+            wishBtn.onclick = () => {
+                toggleWishlist(product.id);
+                const updatedWished = wishlist.some(w => w.id === product.id);
+                wishBtn.innerHTML = updatedWished ? '<i class="fa-solid fa-heart"></i>' : '<i class="fa-regular fa-heart"></i>';
+                wishBtn.className = updatedWished 
+                    ? 'w-14 h-14 rounded-xl border border-red-200 flex items-center justify-center text-red-500 bg-red-50 text-xl transition-colors'
+                    : 'w-14 h-14 rounded-xl border border-gray-200 flex items-center justify-center text-gray-400 hover:text-red-500 hover:border-red-200 hover:bg-red-50 text-xl transition-colors';
+            };
+
+            openModal('productModal');
         }
 
-        function closeProductModal() {
-            document.getElementById('productModal').classList.add('hidden');
+        function selectSize(clickedBtn) {
+            document.querySelectorAll('.size-btn').forEach(b => {
+                b.className = 'w-10 h-10 rounded-lg border border-gray-200 hover:border-brand-blue hover:text-brand-blue text-gray-600 font-bold text-sm transition-all size-btn';
+            });
+            clickedBtn.className = 'w-10 h-10 rounded-lg border-2 border-brand-blue bg-blue-50 text-brand-blue font-bold text-sm transition-all size-btn selected-size';
         }
 
-        function openTrackOrderModal() {
-            document.getElementById('trackOrderModal').classList.remove('hidden');
+        // --- STREAMING_CHUNK: Wishlist Logic... ---
+        function toggleWishlist(id) {
+            const index = wishlist.findIndex(w => w.id === id);
+            if (index > -1) {
+                wishlist.splice(index, 1);
+                showToast('Removido de favoritos', 'info');
+            } else {
+                const prod = products.find(p => p.id === id);
+                if(prod) {
+                    wishlist.push(prod);
+                    showToast('Agregado a favoritos', 'success');
+                }
+            }
+            localStorage.setItem('romeo_wishlist', JSON.stringify(wishlist));
+            updateBadges();
+            
+            // Update UI icons if visible
+            const heartIcon = document.getElementById(`heart-grid-${id}`);
+            if (heartIcon) {
+                const isWished = index === -1; // If it was -1, it got added
+                heartIcon.className = `fa-heart ${isWished ? 'fa-solid text-red-500' : 'fa-regular text-gray-400'} text-sm transition-colors`;
+            }
+            
+            // Update modal if open
+            if(!document.getElementById('wishlistModal').classList.contains('hidden')){
+                renderWishlist();
+            }
         }
 
-        function closeTrackOrderModal() {
-            document.getElementById('trackOrderModal').classList.add('hidden');
-            document.getElementById('trackResult').classList.add('hidden');
-        }
-
-        function handleTrackOrder(e) {
-            e.preventDefault();
-            document.getElementById('trackResult').classList.remove('hidden');
-        }
-
-        function openPickupModal() {
-            showToast("Sucursal: San Salvador, El Salvador. Horario: 8:00 AM - 6:00 PM");
-        }
-
-        function openUserModal() {
-            document.getElementById('userModal').classList.remove('hidden');
-        }
-
-        function closeUserModal() {
-            document.getElementById('userModal').classList.add('hidden');
-        }
-
-        function openWishlist() {
-            const drawer = document.getElementById('wishlistDrawer');
-            const content = document.getElementById('wishlistContent');
-            drawer.classList.remove('opacity-0', 'pointer-events-none');
-            content.classList.remove('translate-x-full');
-            renderWishlistUI();
-        }
-
-        function closeWishlist() {
-            const drawer = document.getElementById('wishlistDrawer');
-            const content = document.getElementById('wishlistContent');
-            drawer.classList.add('opacity-0', 'pointer-events-none');
-            content.classList.add('translate-x-full');
-        }
-
-        function renderWishlistUI() {
-            const list = document.getElementById('wishlistItemsList');
-            list.innerHTML = '';
-
+        function renderWishlist() {
+            const container = document.getElementById('wishlistItemsContainer');
+            container.innerHTML = '';
+            
             if (wishlist.length === 0) {
-                list.innerHTML = `
-                    <div class="text-center py-12 text-gray-400">
-                        <i class="fa-regular fa-heart text-5xl mb-3 opacity-30"></i>
-                        <p class="font-bold text-sm text-gray-600">No tienes favoritos aún</p>
-                        <button onclick="closeWishlist()" class="mt-4 text-xs font-bold text-brand-blue hover:underline">Explorar catálogo</button>
-                    </div>
-                `;
+                container.innerHTML = `
+                    <div class="text-center py-10 text-gray-400">
+                        <i class="fa-regular fa-heart text-4xl mb-3"></i>
+                        <p class="text-sm">No tienes favoritos guardados aún.</p>
+                    </div>`;
                 return;
             }
 
-            const favoriteProducts = products.filter(p => wishlist.includes(p.id));
-            favoriteProducts.forEach(item => {
-                const el = document.createElement('div');
-                el.className = "flex gap-3 bg-white p-3 rounded-xl border border-gray-200 items-center shadow-sm";
-                el.innerHTML = `
-                    <img src="${item.image}" class="w-16 h-16 rounded-lg object-cover cursor-pointer" onclick="openProductModal(${item.id}); closeWishlist();">
-                    <div class="flex-1">
-                        <h4 class="font-bold text-xs text-gray-900 line-clamp-1">${item.name}</h4>
-                        <p class="text-xs text-brand-burgundy font-black mt-1">$${item.price.toFixed(2)}</p>
-                    </div>
-                    <div class="flex flex-col gap-2">
-                        <button onclick="addToCart(${item.id}); showToast('Agregado desde favoritos');" class="bg-gray-900 text-white w-8 h-8 rounded-full flex items-center justify-center hover:bg-brand-blue transition-colors" title="Al Carrito">
-                            <i class="fa-solid fa-cart-plus text-xs"></i>
-                        </button>
-                        <button onclick="toggleWishlist(${item.id}); renderWishlistUI();" class="bg-red-50 text-red-500 w-8 h-8 rounded-full flex items-center justify-center hover:bg-red-100 transition-colors" title="Eliminar">
+            wishlist.forEach(item => {
+                const price = item.offer ? item.price * 0.7 : item.price;
+                const html = `
+                    <div class="flex gap-4 items-center border border-gray-100 rounded-xl p-3 shadow-sm relative pr-10">
+                        <img src="${item.image}" alt="${item.name}" class="w-16 h-16 object-cover rounded-lg border border-gray-100">
+                        <div>
+                            <h4 class="font-bold text-xs sm:text-sm leading-tight mb-1 text-gray-800">${item.name}</h4>
+                            <span class="text-brand-blue font-bold text-sm">${formatMoney(price)}</span>
+                        </div>
+                        <button onclick="toggleWishlist('${item.id}')" class="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-red-500 bg-red-50 hover:bg-red-100 rounded-full transition-colors">
                             <i class="fa-solid fa-trash-can text-xs"></i>
                         </button>
                     </div>
                 `;
-                list.appendChild(el);
+                container.insertAdjacentHTML('beforeend', html);
             });
         }
 
-        async function loadCatalogFromSheets() {
-            const activeSheetsUrl = localStorage.getItem('romeo_sheets_url') || GOOGLE_SHEETS_URL;
-            if (activeSheetsUrl) {
-                try {
-                    Papa.parse(activeSheetsUrl, {
-                        download: true,
-                        header: true,
-                        complete: function(results) {
-                            if (results.data && results.data.length > 0) {
-                                products = results.data.filter(row => row.nombre).map((row, index) => ({
-                                    id: row.id ? parseInt(row.id) : index + 100,
-                                    name: row.nombre,
-                                    category: (row.categoria || 'todos').toLowerCase(),
-                                    price: parseFloat(row.precio) || 0,
-                                    originalPrice: parseFloat(row.precioOriginal) || 0,
-                                    image: row.imagen || 'https://placehold.co/600x800/eeeeee/999999?text=Sin+Imagen',
-                                    description: row.descripcion || ''
-                                }));
-                                renderProducts(products);
-                            }
-                        },
-                        error: function(err) {
-                            console.error("Error al leer CSV:", err);
-                            renderProducts(products); // Si falla, carga productos por defecto
-                        }
-                    });
-                } catch (error) {
-                    console.error("Excepción al cargar CSV:", error);
-                    renderProducts(products); // Si falla, carga productos por defecto
+        // --- STREAMING_CHUNK: Shopping Cart & Checkout Logic... ---
+        function updateBadges() {
+            const cartBadge = document.getElementById('cartBadge');
+            const cartCount = cart.reduce((acc, item) => acc + item.qty, 0);
+            cartBadge.innerText = cartCount;
+            cartBadge.style.display = cartCount > 0 ? 'flex' : 'none';
+
+            const wishBadge = document.getElementById('wishlistCount');
+            wishBadge.innerText = wishlist.length;
+            wishBadge.classList.toggle('hidden', wishlist.length === 0);
+        }
+
+        function openCartModal() {
+            renderCart();
+            openModal('cartModal');
+        }
+
+        function addToCart(id, size = null) {
+            const product = products.find(p => p.id === id);
+            if (!product) return;
+
+            // Default size if not provided via modal
+            if(!size) {
+                size = (product.category === 'calzado') ? '40' : (product.category === 'accesorios' ? 'Única' : 'M');
+            }
+
+            const finalPrice = product.offer ? product.price * 0.7 : product.price;
+
+            const existing = cart.find(c => c.id === id && c.size === size);
+            if (existing) {
+                existing.qty += 1;
+            } else {
+                cart.push({ ...product, price: finalPrice, size: size, qty: 1 });
+            }
+
+            localStorage.setItem('romeo_cart', JSON.stringify(cart));
+            updateBadges();
+            showToast(`Agregaste: ${product.name} (${size})`);
+            
+            // Auto open cart modal
+            openCartModal();
+        }
+
+        function removeFromCart(id, size) {
+            cart = cart.filter(c => !(c.id === id && c.size === size));
+            localStorage.setItem('romeo_cart', JSON.stringify(cart));
+            updateBadges();
+            renderCart();
+        }
+
+        function changeQty(id, size, delta) {
+            const item = cart.find(c => c.id === id && c.size === size);
+            if (item) {
+                item.qty += delta;
+                if (item.qty <= 0) {
+                    removeFromCart(id, size);
+                } else {
+                    localStorage.setItem('romeo_cart', JSON.stringify(cart));
+                    updateBadges();
+                    renderCart();
                 }
-            } else {
-                renderProducts(products); // Usa catálogo por defecto si no hay enlace
             }
         }
 
-        function openSheetsModal() {
-            const stored = localStorage.getItem('romeo_sheets_url') || GOOGLE_SHEETS_URL;
-            document.getElementById('sheetsUrlInput').value = stored;
-            document.getElementById('sheetsModal').classList.remove('hidden');
-        }
-
-        function closeSheetsModal() {
-            document.getElementById('sheetsModal').classList.add('hidden');
-        }
-
-        function downloadCSVTemplate() {
-            const csvRows = [
-                ["id", "nombre", "categoria", "precio", "precioOriginal", "imagen", "descripcion"],
-                ["1", "Camisa Polo Casual Romeo Slim", "caballero", "18.20", "26.00", "https://images.unsplash.com/photo-1625910513413-5fc281313495?auto=format&fit=crop&w=600&q=80", "Camisa estilo polo fresca y elegante."],
-                ["2", "Camisa Manga Larga Vestir Elegance", "caballero", "24.50", "35.00", "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?auto=format&fit=crop&w=600&q=80", "Camisa formal confeccionada en algodón suave."],
-                ["3", "Vestido Casual de Verano Floral", "dama", "21.00", "30.00", "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=600&q=80", "Vestido ligero con estampado floral."],
-                ["4", "Sneakers Urbanos Romeo Style", "calzado", "34.30", "49.00", "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?auto=format&fit=crop&w=600&q=80", "Calzado deportivo moderno."],
-                ["5", "Gorra Urbana Snapback", "accesorios", "11.20", "16.00", "https://images.unsplash.com/photo-1588850561407-ed78c282e89b?auto=format&fit=crop&w=600&q=80", "Gorra con bordado de alta precisión."]
-            ];
-
-            const csvString = csvRows.map(e => e.map(cell => `"${cell}"`).join(",")).join("\n");
-            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            const url = URL.createObjectURL(blob);
-            link.setAttribute("href", url);
-            link.setAttribute("download", "Plantilla_Productos_Variedades_Romeo.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            showToast("¡Plantilla CSV descargada exitosamente!");
-        }
-
-        function handleSaveSheetsUrl(e) {
-            e.preventDefault();
-            const url = document.getElementById('sheetsUrlInput').value.trim();
-            if (url) {
-                localStorage.setItem('romeo_sheets_url', url);
-                showToast("¡Google Sheets conectado correctamente!");
-                closeSheetsModal();
-                loadCatalogFromSheets();
-            } else {
-                handleResetSheetsUrl();
-            }
-        }
-
-        function handleResetSheetsUrl() {
-            localStorage.removeItem('romeo_sheets_url');
-            document.getElementById('sheetsUrlInput').value = '';
-            showToast("Restablecido al catálogo de demostración.");
-            closeSheetsModal();
-            renderProducts(products);
-        }
-
-        function showToast(msg) {
-            const toast = document.getElementById('toast');
-            document.getElementById('toastMessage').innerText = msg;
-            toast.classList.remove('translate-y-[-100px]', 'opacity-0');
-            setTimeout(() => {
-                toast.classList.add('translate-y-[-100px]', 'opacity-0');
-            }, 3000);
-        }
-
-        function handleSearch(e) {
-            e.preventDefault();
-            const query = (document.getElementById('searchInput').value || document.getElementById('mobileSearchInput').value).toLowerCase();
-            if (!query) return;
-
-            const matches = products.filter(p => p.name.toLowerCase().includes(query) || p.category.toLowerCase().includes(query));
-            renderProducts(matches);
-            document.getElementById('catalogo').scrollIntoView({ behavior: 'smooth' });
-        }
-
-        function toggleMobileSearch() {
-            document.getElementById('mobileSearch').classList.toggle('hidden');
-        }
-
-        function openCheckoutModal() {
+        function renderCart() {
+            const container = document.getElementById('cartItemsContainer');
+            
             if (cart.length === 0) {
-                showToast("Tu carrito está vacío.");
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-10 text-gray-400 gap-3">
+                        <i class="fa-solid fa-basket-shopping text-5xl text-gray-300"></i>
+                        <p class="text-sm font-medium text-gray-500">Tu carrito está vacío</p>
+                        <button onclick="closeModal('cartModal'); document.getElementById('catalogo').scrollIntoView({behavior:'smooth'})" class="px-6 py-2 bg-gray-900 text-white text-xs font-bold rounded-full uppercase mt-2 hover:bg-brand-blue transition-colors">Explorar Catálogo</button>
+                    </div>`;
+                document.getElementById('cartSubtotal').innerText = '$0.00';
+                document.getElementById('cartShipping').innerText = '$0.00';
+                document.getElementById('cartTotal').innerText = '$0.00';
                 return;
             }
 
-            let total = 0;
-            const orderLines = cart.map(item => {
-                const lineTotal = item.price * item.quantity;
-                total += lineTotal;
-                return `• ${item.quantity}x ${item.name} - $${lineTotal.toFixed(2)}`;
+            container.innerHTML = '';
+            let subtotal = 0;
+
+            cart.forEach(item => {
+                const itemTotal = item.price * item.qty;
+                subtotal += itemTotal;
+                
+                const html = `
+                    <div class="flex gap-3 p-3 bg-white rounded-xl shadow-sm border border-gray-100 relative items-center">
+                        <img src="${item.image}" alt="${item.name}" class="w-16 h-16 object-cover rounded-lg border border-gray-100 flex-shrink-0">
+                        <div class="flex flex-col justify-between flex-1 min-w-0 pr-6">
+                            <h4 class="text-xs font-bold text-gray-800 leading-tight truncate mb-1">${item.name}</h4>
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-bold">Talla: ${item.size}</span>
+                                <span class="font-bold text-brand-blue text-xs">${formatMoney(item.price)}</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="flex items-center bg-gray-100 rounded-lg">
+                                    <button onclick="changeQty('${item.id}', '${item.size}', -1)" class="w-6 h-6 flex items-center justify-center text-gray-600 hover:text-black font-bold text-xs">-</button>
+                                    <span class="w-6 text-center text-xs font-bold">${item.qty}</span>
+                                    <button onclick="changeQty('${item.id}', '${item.size}', 1)" class="w-6 h-6 flex items-center justify-center text-gray-600 hover:text-black font-bold text-xs">+</button>
+                                </div>
+                                <span class="text-xs font-extrabold text-gray-700 ml-auto">${formatMoney(itemTotal)}</span>
+                            </div>
+                        </div>
+                        <button onclick="removeFromCart('${item.id}', '${item.size}')" class="absolute top-2 right-2 text-gray-300 hover:text-red-500 transition-colors p-1">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', html);
             });
 
-            const message = 
-                `Hola Variedades Romeo 👋%0A` +
-                `Quiero realizar el siguiente pedido:%0A%0A` +
-                orderLines.join('%0A') +
-                `%0A%0A` +
-                `*Total a pagar: $${total.toFixed(2)}*%0A%0A` +
-                `¡Gracias!`;
+            const shipping = subtotal >= 35 ? 0 : 3.99;
+            const total = subtotal + shipping;
 
-            const url = `https://wa.me/50377190952?text=${message}`;
-            window.open(url, '_blank');
+            document.getElementById('cartSubtotal').innerText = formatMoney(subtotal);
+            
+            const shippingEl = document.getElementById('cartShipping');
+            if (shipping === 0) {
+                shippingEl.innerHTML = '<span class="text-green-600 font-bold uppercase text-xs">¡Gratis!</span>';
+            } else {
+                shippingEl.innerText = formatMoney(shipping);
+            }
+            
+            document.getElementById('cartTotal').innerText = formatMoney(total);
         }
 
-        // Initialize Page
-        window.onload = function() {
-            updateWishlistUIBadge();
-            updateCartUI();
-            const storedUrl = localStorage.getItem('romeo_sheets_url') || GOOGLE_SHEETS_URL;
-            if (typeof Papa !== 'undefined' && storedUrl !== "") {
-                loadCatalogFromSheets();
-            } else {
-                renderProducts(products);
+        function checkoutWhatsApp() {
+            if (cart.length === 0) {
+                showToast('Agrega productos al carrito primero', 'error');
+                return;
             }
-        };
+
+            let subtotal = 0;
+            let message = `*NUEVO PEDIDO - VARIEDADES ROMEO* 🛍️🇸🇻\n\nHola Romeo, quiero hacer el siguiente pedido:\n\n`;
+            
+            cart.forEach((item, index) => {
+                subtotal += (item.price * item.qty);
+                message += `${index + 1}. *${item.name}*\n`;
+                message += `   Talla: ${item.size} | Cantidad: ${item.qty} | Precio: ${formatMoney(item.price * item.qty)}\n\n`;
+            });
+
+            const shipping = subtotal >= 35 ? 0 : 3.99;
+            const total = subtotal + shipping;
+
+            message += `------------------------\n`;
+            message += `*Subtotal:* ${formatMoney(subtotal)}\n`;
+            message += `*Envío:* ${shipping === 0 ? 'GRATIS' : formatMoney(shipping)}\n`;
+            message += `*TOTAL A PAGAR:* ${formatMoney(total)}\n`;
+            message += `------------------------\n\n`;
+            message += `¿Cuáles son los métodos de pago y tiempo de entrega?`;
+
+            const encodedMessage = encodeURIComponent(message);
+            const whatsappUrl = `https://wa.me/50377190952?text=${encodedMessage}`;
+            
+            window.open(whatsappUrl, '_blank');
+        }
+
     </script>
 </body>
 </html>
